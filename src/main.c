@@ -68,7 +68,12 @@ static m64p_handle l_Config64DD = NULL;
 
 static const char *l_CoreLibPath = NULL;
 static const char *l_ConfigDirPath = NULL;
+#if (!EMSCRIPTEN)
 static const char *l_ROMFilepath = NULL;       // filepath of ROM to load & run at startup
+#else
+static const char *l_ROMFilepath = "./roms/m64p_test_rom.v64";       // filepath of ROM to load & run at startup
+//static const char *l_ROMFilepath = "./roms/ps2.z64";       // filepath of ROM to load & run at startup
+#endif
 static const char *l_SaveStatePath = NULL;     // save state to load at startup
 
 #if defined(SHAREDIR)
@@ -298,7 +303,12 @@ static m64p_error OpenConfigurationHandles(void)
     /* Set default values for my Config parameters */
     (*ConfigSetDefaultFloat)(l_ConfigUI, "Version", CONFIG_PARAM_VERSION,  "Mupen64Plus UI-Console config parameter set version number.  Please don't change this version number.");
     (*ConfigSetDefaultString)(l_ConfigUI, "PluginDir", OSAL_CURRENT_DIR, "Directory in which to search for plugins");
+#if (!EMSCRIPTEN)
     (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "mupen64plus-video-rice" OSAL_DLL_EXTENSION, "Filename of video plugin");
+#else
+    (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "./plugins/mupen64plus-video-glide64mk2" OSAL_DLL_EXTENSION, "Filename of video plugin");
+    //(*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "./plugins/mupen64plus-video-rice" OSAL_DLL_EXTENSION, "Filename of video plugin");
+#endif
     (*ConfigSetDefaultString)(l_ConfigUI, "AudioPlugin", "mupen64plus-audio-sdl" OSAL_DLL_EXTENSION, "Filename of audio plugin");
     (*ConfigSetDefaultString)(l_ConfigUI, "InputPlugin", "mupen64plus-input-sdl" OSAL_DLL_EXTENSION, "Filename of input plugin");
     (*ConfigSetDefaultString)(l_ConfigUI, "RspPlugin", "mupen64plus-rsp-hle" OSAL_DLL_EXTENSION, "Filename of RSP plugin");
@@ -777,9 +787,15 @@ static m64p_error ParseCommandLineMain(int argc, const char **argv)
         /* continue argv loop */
     }
 
+#if (!EMSCRIPTEN)
     /* missing ROM filepath */
     DebugMessage(M64MSG_ERROR, "no ROM filepath given");
     return M64ERR_INPUT_INVALID;
+#else
+    int hackemumode = 0;
+    (*ConfigSetParameter)(l_ConfigCore, "R4300Emulator", M64TYPE_INT, &hackemumode);
+    return M64ERR_SUCCESS;
+#endif
 }
 
 static m64p_error ParseCommandLinePlugin(int argc, const char **argv)
@@ -916,7 +932,7 @@ int main(int argc, char *argv[])
 {
     int i;
 
-    printf(" __  __                         __   _  _   ____  _             \n");  
+    printf(" __  __                         __   _  _   ____  _             \n");
     printf("|  \\/  |_   _ _ __   ___ _ __  / /_ | || | |  _ \\| |_   _ ___ \n");
     printf("| |\\/| | | | | '_ \\ / _ \\ '_ \\| '_ \\| || |_| |_) | | | | / __|  \n");
     printf("| |  | | |_| | |_) |  __/ | | | (_) |__   _|  __/| | |_| \\__ \\  \n");
@@ -1141,6 +1157,7 @@ int main(int argc, char *argv[])
     /* run the game */
     (*CoreDoCommand)(M64CMD_EXECUTE, 0, NULL);
 
+#if !(EMSCRIPTEN)
     /* detach plugins from core and unload them */
     for (i = 0; i < 4; i++)
         (*CoreDetachPlugin)(g_PluginMap[i].type);
@@ -1160,7 +1177,6 @@ int main(int argc, char *argv[])
     /* free allocated memory */
     if (l_TestShotList != NULL)
         free(l_TestShotList);
-
+#endif //EMSCRIPTEN
     return 0;
 }
-
