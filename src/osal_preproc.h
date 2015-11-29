@@ -57,10 +57,17 @@
 
   #include <limits.h>  // for PATH_MAX
 
+#if (!EMSCRIPTEN)
   #define OSAL_DEFAULT_DYNLIB_FILENAME "libmupen64plus.so.2"
   #define OSAL_DIR_SEPARATOR           '/'
   #define OSAL_CURRENT_DIR             "./"
   #define OSAL_DLL_EXTENSION           ".so"
+#else
+  #define OSAL_DEFAULT_DYNLIB_FILENAME "./plugins/libmupen64plus.so.2.js"
+  #define OSAL_DIR_SEPARATOR           '/'
+  #define OSAL_CURRENT_DIR             "./"
+  #define OSAL_DLL_EXTENSION           ".js"
+#endif
   #define osal_insensitive_strcmp(x, y) strcasecmp(x, y)
 
   /* PATH_MAX only may be defined by limits.h */
@@ -71,4 +78,3 @@
 #endif
 
 #endif /* #define OSAL_PREPROC_H */
-

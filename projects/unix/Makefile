@@ -106,19 +106,19 @@ ifeq ($(OS), OSX)
 endif
 
 # test for presence of SDL
-ifeq ($(origin SDL_CFLAGS) $(origin SDL_LDLIBS), undefined undefined)
-  SDL_CONFIG = $(CROSS_COMPILE)sdl2-config
-  ifeq ($(shell which $(SDL_CONFIG) 2>/dev/null),)
-    SDL_CONFIG = $(CROSS_COMPILE)sdl-config
-    ifeq ($(shell which $(SDL_CONFIG) 2>/dev/null),)
-      $(error No SDL development libraries found!)
-    else
-      $(warning Using SDL 1.2 libraries)
-    endif
-  endif
-  SDL_CFLAGS  += $(shell $(SDL_CONFIG) --cflags)
-  SDL_LDLIBS += $(shell $(SDL_CONFIG) --libs)
-endif
+# ifeq ($(origin SDL_CFLAGS) $(origin SDL_LDLIBS), undefined undefined)
+#   # SDL_CONFIG = $(CROSS_COMPILE)sdl2-config
+#   # ifeq ($(shell which $(SDL_CONFIG) 2>/dev/null),)
+#   #   SDL_CONFIG = $(CROSS_COMPILE)sdl-config
+#   #   ifeq ($(shell which $(SDL_CONFIG) 2>/dev/null),)
+#   #     $(error No SDL development libraries found!)
+#   #   else
+#   #     $(warning Using SDL 1.2 libraries)
+#   #   endif
+#   # endif
+#   # SDL_CFLAGS  += $(shell $(SDL_CONFIG) --cflags)
+#   # SDL_LDLIBS += $(shell $(SDL_CONFIG) --libs)
+# endif
 CFLAGS += $(SDL_CFLAGS)
 LDLIBS += $(SDL_LDLIBS)
 
@@ -170,8 +170,8 @@ endif
 endif
 
 # set base program pointers and flags
-CC        = $(CROSS_COMPILE)gcc
-CXX       = $(CROSS_COMPILE)g++
+CC        ?= $(CROSS_COMPILE)gcc
+CXX       ?= $(CROSS_COMPILE)g++
 RM       ?= rm -f
 INSTALL  ?= install
 MKDIR ?= mkdir -p
@@ -191,7 +191,7 @@ ifneq ($(SHAREDIR),)
 endif
 ifeq ($(DEBUG),1)
   CFLAGS += -g
-  INSTALL_STRIP_FLAG ?= 
+  INSTALL_STRIP_FLAG ?=
 else
   INSTALL_STRIP_FLAG ?= -s
 endif
