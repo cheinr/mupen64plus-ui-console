@@ -56,8 +56,10 @@ static const char *l_ConfigDirPath = NULL;
 #if (!EMSCRIPTEN)
 static const char *l_ROMFilepath = NULL;       // filepath of ROM to load & run at startup
 #else
-static const char *l_ROMFilepath = "./roms/m64p_test_rom.v64";       // filepath of ROM to load & run at startup
-//static const char *l_ROMFilepath = "./roms/ps2.z64";       // filepath of ROM to load & run at startup
+//static const char *l_ROMFilepath = "./roms/m64p_test_rom.v64";       // filepath of ROM to load & run at startup
+//static const char *l_ROMFilepath = "./roms/Pokemon Stadium 2 (U) [!].z64";       // filepath of ROM to load & run at startup
+static const char *l_ROMFilepath = "./roms/Super_Mario_64_(U)_[!].v64"; 
+
 #endif
 static const char *l_SaveStatePath = NULL;     // save state to load at startup
 
@@ -217,15 +219,26 @@ static m64p_error OpenConfigurationHandles(void)
     /* Set default values for my Config parameters */
     (*ConfigSetDefaultFloat)(l_ConfigUI, "Version", CONFIG_PARAM_VERSION,  "Mupen64Plus UI-Console config parameter set version number.  Please don't change this version number.");
     (*ConfigSetDefaultString)(l_ConfigUI, "PluginDir", OSAL_CURRENT_DIR, "Directory in which to search for plugins");
+
 #if (!EMSCRIPTEN)
     (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "mupen64plus-video-rice" OSAL_DLL_EXTENSION, "Filename of video plugin");
 #else
     (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "./plugins/mupen64plus-video-glide64mk2" OSAL_DLL_EXTENSION, "Filename of video plugin");
-    //(*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "./plugins/mupen64plus-video-rice" OSAL_DLL_EXTENSION, "Filename of video plugin");
 #endif
+    
     (*ConfigSetDefaultString)(l_ConfigUI, "AudioPlugin", "mupen64plus-audio-sdl" OSAL_DLL_EXTENSION, "Filename of audio plugin");
+
+#if (!EMSCRIPTEN)
     (*ConfigSetDefaultString)(l_ConfigUI, "InputPlugin", "mupen64plus-input-sdl" OSAL_DLL_EXTENSION, "Filename of input plugin");
+#else
+    (*ConfigSetDefaultString)(l_ConfigUI, "InputPlugin", "./plugins/mupen64plus-input-sdl" OSAL_DLL_EXTENSION, "Filename of input plugin");
+#endif
+
+#if (!EMSCRIPTEN)
     (*ConfigSetDefaultString)(l_ConfigUI, "RspPlugin", "mupen64plus-rsp-hle" OSAL_DLL_EXTENSION, "Filename of RSP plugin");
+#else
+    (*ConfigSetDefaultString)(l_ConfigUI, "RspPlugin", "./plugins/mupen64plus-rsp-hle" OSAL_DLL_EXTENSION, "Filename of RSP plugin");
+#endif
 
     if (bSaveConfig && ConfigSaveSection != NULL) /* ConfigSaveSection was added in Config API v2.1.0 */
         (*ConfigSaveSection)("UI-Console");
