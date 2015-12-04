@@ -30,6 +30,8 @@
 
 m64p_error osal_dynlib_open(m64p_dynlib_handle *pLibHandle, const char *pccLibraryPath)
 {
+    fprintf(stderr,"osal_dynlib_open opening: %s\n",pccLibraryPath);
+
     if (pLibHandle == NULL || pccLibraryPath == NULL)
         return M64ERR_INPUT_ASSERT;
 
