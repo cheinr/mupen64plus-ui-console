@@ -306,25 +306,20 @@ static m64p_error OpenConfigurationHandles(void)
     (*ConfigSetDefaultFloat)(l_ConfigUI, "Version", CONFIG_PARAM_VERSION,  "Mupen64Plus UI-Console config parameter set version number.  Please don't change this version number.");
     (*ConfigSetDefaultString)(l_ConfigUI, "PluginDir", OSAL_CURRENT_DIR, "Directory in which to search for plugins");
 
-#if (!EMSCRIPTEN)
-    (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "mupen64plus-video-rice" OSAL_DLL_EXTENSION, "Filename of video plugin");
-#else
+#if EMSCRIPTEN
     (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "./plugins/mupen64plus-video-glide64mk2" OSAL_DLL_EXTENSION, "Filename of video plugin");
-#endif
-    
-    (*ConfigSetDefaultString)(l_ConfigUI, "AudioPlugin", "mupen64plus-audio-sdl" OSAL_DLL_EXTENSION, "Filename of audio plugin");
-
-#if (!EMSCRIPTEN)
-    (*ConfigSetDefaultString)(l_ConfigUI, "InputPlugin", "mupen64plus-input-sdl" OSAL_DLL_EXTENSION, "Filename of input plugin");
-#else
     (*ConfigSetDefaultString)(l_ConfigUI, "InputPlugin", "./plugins/mupen64plus-input-sdl" OSAL_DLL_EXTENSION, "Filename of input plugin");
-#endif
-
-#if (!EMSCRIPTEN)
-    (*ConfigSetDefaultString)(l_ConfigUI, "RspPlugin", "mupen64plus-rsp-hle" OSAL_DLL_EXTENSION, "Filename of RSP plugin");
-#else
     (*ConfigSetDefaultString)(l_ConfigUI, "RspPlugin", "./plugins/mupen64plus-rsp-hle" OSAL_DLL_EXTENSION, "Filename of RSP plugin");
-#endif
+    (*ConfigSetDefaultString)(l_ConfigUI, "AudioPlugin", "./plugins/mupen64plus-audio-sdl" OSAL_DLL_EXTENSION, "Filename of audio plugin");
+#else
+    (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "mupen64plus-video-rice" OSAL_DLL_EXTENSION, "Filename of video plugin");
+    (*ConfigSetDefaultString)(l_ConfigUI, "AudioPlugin", "mupen64plus-audio-sdl" OSAL_DLL_EXTENSION, "Filename of audio plugin");
+    (*ConfigSetDefaultString)(l_ConfigUI, "InputPlugin", "mupen64plus-input-sdl" OSAL_DLL_EXTENSION, "Filename of input plugin");
+    (*ConfigSetDefaultString)(l_ConfigUI, "RspPlugin", "mupen64plus-rsp-hle" OSAL_DLL_EXTENSION, "Filename of RSP plugin");
+#endif // EMSCRIPTEN
+
+
+
 
     for(i = 1; i < 5; ++i) {
         char key[64];
