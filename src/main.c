@@ -58,7 +58,15 @@ static const char *l_ROMFilepath = NULL;       // filepath of ROM to load & run 
 #else
 //static const char *l_ROMFilepath = "./roms/m64p_test_rom.v64";       // filepath of ROM to load & run at startup
 //static const char *l_ROMFilepath = "./roms/Pokemon Stadium 2 (U) [!].z64";       // filepath of ROM to load & run at startup
-static const char *l_ROMFilepath = "./roms/Super_Mario_64_(U)_[!].v64"; 
+
+#ifdef INPUT_ROM
+#define xstr(a) str(a)
+#define str(a) #a
+static const char *l_ROMFilepath = "./roms/" xstr(INPUT_ROM) ;
+#else
+static const char *l_ROMFilepath = "./roms/Super_Mario_64_(U)_[!].v64";
+#endif
+
 
 #endif
 static const char *l_SaveStatePath = NULL;     // save state to load at startup
