@@ -44,5 +44,5 @@ EMCC_FORCE_STDLIBS=1 emmake make \
   GL_CFLAGS="" \
   GLU_CFLAGS="" \
   V=1 \
-  OPTFLAGS="-O0 -g2 -s MAIN_MODULE=1 --preload-file plugins --preload-file data  --preload-file roms --preload-file Glide64mk2.ini -s TOTAL_MEMORY=500000000 --emrun -s ASSERTIONS=2 -s USE_ZLIB=1 -s USE_SDL=2 -s USE_LIBPNG=1 -DEMSCRIPTEN=1" \
+  OPTFLAGS="-O0 -g2 -s MAIN_MODULE=1 --preload-file plugins --preload-file data  --preload-file roms --preload-file Glide64mk2.ini -s TOTAL_MEMORY=500000000 --emrun -s FULL_ES2=1 -s USE_ZLIB=1 -s USE_SDL=2 -s USE_LIBPNG=1 -DEMSCRIPTEN=1" \
   $1
