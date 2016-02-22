@@ -12,7 +12,7 @@
       }
 
       .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
-      div.emscripten { text-align: center; }      
+      div.emscripten { text-align: center; }
       div.emscripten_border { border: 1px solid black; }
       /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
       canvas.emscripten { border: 0px none; }
@@ -40,7 +40,7 @@
         border-right: 5px solid rgb(235, 235, 235);
         border-bottom: 5px solid rgb(235, 235, 235);
         border-top: 5px solid rgb(120, 120, 120);
-        
+
         border-radius: 100%;
         background-color: rgb(189, 215, 46);
       }
@@ -102,6 +102,7 @@
     </style>
   </head>
   <body>
+    <script src="stats.min.js"></script>
     <!-- <img id="spinner" src="oading_spinner.gif" alt="LOADING..." style="width:304px;height:228px;"> -->
     <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
        <script type='text/javascript'>
