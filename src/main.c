@@ -53,6 +53,10 @@
 
 #define PIF_ROM_SIZE 2048
 
+#if EMSCRIPTEN
+#include "emscripten.h"
+#endif
+
 /* Version number for UI-Console config section parameters */
 #define CONFIG_PARAM_VERSION     1.00
 
@@ -136,6 +140,9 @@ void DebugCallback(void *Context, int level, const char *message)
     }
     else
         __android_log_print(ANDROID_LOG_ERROR, (const char *) Context, "Unknown: %s", message);
+
+#elif EMSCRIPTEN
+    fprintf(stdout, "@@@ %s: %s\n", (const char *) Context, message);
 #else
     if (level == M64MSG_ERROR)
         printf("%s Error: %s\n", (const char *) Context, message);
@@ -922,6 +929,20 @@ static m64p_media_loader l_media_loader =
     media_loader_get_dd_disk
 };
 
+#if EMSCRIPTEN
+void dummy_main(void)
+{
+  //NOOP
+  // temporary main loop to keep the application from exiting.
+  // Swapped for actual main loop in interpreter.
+};
+
+EMSCRIPTEN_KEEPALIVE int startCore(int p)
+{
+  (*CoreDoCommand)(M64CMD_EXECUTE, 0, NULL);
+  return 0;
+}
+#endif
 
 /*********************************************************************************************************
 * main function
@@ -1170,8 +1191,31 @@ int main(int argc, char *argv[])
     if (l_SaveOptions && (*ConfigHasUnsavedChanges)(NULL))
         (*ConfigSaveFile)();
 
+#if EMSCRIPTEN
+      // initiate async call to mount IDBFS persistent filesystem to /save
+      // and when that completes start up the core with an async call to
+      // "CoreDoCommand"
+      EM_ASM({
+        FS.mkdir('/save');
+        FS.mount(IDBFS, {}, '/save');
+
+        var callback = function(e)
+        {
+          console.log("IDBFS data reflected to ram filesystem.");
+          console.log("Starting game core");
+          var startCore = Module.cwrap('startCore', 'number', ['number']);
+          startCore();
+        };
+
+        FS.syncfs(true, callback);
+      });
+      // set a temporary emscripten main loop to prevent the application
+      // from existing
+      emscripten_set_main_loop(dummy_main,0, 0);
+#else
     /* run the game */
     (*CoreDoCommand)(M64CMD_EXECUTE, 0, NULL);
+#endif
 
 #if !(EMSCRIPTEN)
     /* detach plugins from core and unload them */
