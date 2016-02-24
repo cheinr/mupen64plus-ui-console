@@ -70,24 +70,26 @@ static m64p_handle l_ConfigUI = NULL;
 static m64p_handle l_ConfigTransferPak = NULL;
 static m64p_handle l_Config64DD = NULL;
 
-static const char *l_CoreLibPath = NULL;
-static const char *l_ConfigDirPath = NULL;
-#if (!EMSCRIPTEN)
-static const char *l_ROMFilepath = NULL;       // filepath of ROM to load & run at startup
-#else
-//static const char *l_ROMFilepath = "./roms/m64p_test_rom.v64";       // filepath of ROM to load & run at startup
-//static const char *l_ROMFilepath = "./roms/Pokemon Stadium 2 (U) [!].z64";       // filepath of ROM to load & run at startup
+#if EMSCRIPTEN
 
+static const char *l_CoreLibPath = "/plugins/libmupen64plus.so.2.js";
+static const char *l_ConfigDirPath = "/data";
 #ifdef INPUT_ROM
 #define xstr(a) str(a)
 #define str(a) #a
-static const char *l_ROMFilepath = "./roms/" xstr(INPUT_ROM) ;
+static const char *l_ROMFilepath = "/roms/" xstr(INPUT_ROM) ;
 #else
-static const char *l_ROMFilepath = "./roms/Super_Mario_64_(U)_[!].v64";
+static const char *l_ROMFilepath = NULL;
 #endif
 
+#else
+
+static const char *l_CoreLibPath = NULL;
+static const char *l_ConfigDirPath = NULL;
+static const char *l_ROMFilepath = NULL;       // filepath of ROM to load & run at startup
 
 #endif
+
 static const char *l_SaveStatePath = NULL;     // save state to load at startup
 
 #if defined(SHAREDIR)
@@ -986,6 +988,7 @@ int main(int argc, char *argv[])
         return 2;
 
     /* start the Mupen64Plus core library, load the configuration file */
+
     m64p_error rval = (*CoreStartup)(CORE_API_VERSION, l_ConfigDirPath, l_DataDirPath, "Core", DebugCallback, NULL, CALLBACK_FUNC);
     if (rval != M64ERR_SUCCESS)
     {
