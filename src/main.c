@@ -238,7 +238,8 @@ static m64p_error OpenConfigurationHandles(void)
     (*ConfigSetDefaultString)(l_ConfigUI, "PluginDir", OSAL_CURRENT_DIR, "Directory in which to search for plugins");
 
 #if EMSCRIPTEN
-    (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "./plugins/mupen64plus-video-glide64mk2" OSAL_DLL_EXTENSION, "Filename of video plugin");
+    (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "./plugins/mupen64plus-video-rice" OSAL_DLL_EXTENSION, "Filename of video plugin");
+    //(*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "./plugins/mupen64plus-video-glide64mk2" OSAL_DLL_EXTENSION, "Filename of video plugin");
     (*ConfigSetDefaultString)(l_ConfigUI, "InputPlugin", "./plugins/mupen64plus-input-sdl" OSAL_DLL_EXTENSION, "Filename of input plugin");
     (*ConfigSetDefaultString)(l_ConfigUI, "RspPlugin", "./plugins/mupen64plus-rsp-hle" OSAL_DLL_EXTENSION, "Filename of RSP plugin");
     (*ConfigSetDefaultString)(l_ConfigUI, "AudioPlugin", "./plugins/mupen64plus-audio-sdl" OSAL_DLL_EXTENSION, "Filename of audio plugin");
