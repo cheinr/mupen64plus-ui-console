@@ -72,7 +72,7 @@ static m64p_handle l_Config64DD = NULL;
 
 #if EMSCRIPTEN
 
-static const char *l_CoreLibPath = "/plugins/libmupen64plus.so.2.js";
+static const char *l_CoreLibPath = "plugins/mupen64plus-core-web.js";
 static const char *l_ConfigDirPath = "/data";
 #ifdef INPUT_ROM
 #define xstr(a) str(a)
