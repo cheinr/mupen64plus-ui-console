@@ -63,7 +63,7 @@
   #define OSAL_CURRENT_DIR             "./"
   #define OSAL_DLL_EXTENSION           ".so"
 #else
-  #define OSAL_DEFAULT_DYNLIB_FILENAME "./plugins/libmupen64plus.so.2.js"
+  #define OSAL_DEFAULT_DYNLIB_FILENAME "./plugins/mupen64plus-core-web.js"
   #define OSAL_DIR_SEPARATOR           '/'
   #define OSAL_CURRENT_DIR             "./"
   #define OSAL_DLL_EXTENSION           ".js"
