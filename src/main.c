@@ -652,18 +652,13 @@ static m64p_error ParseCommandLineFinal(int argc, const char **argv)
 }
 
 #if EMSCRIPTEN
-void dummy_main(void)
-{
-  //NOOP
-  // temporary main loop to keep the application from exiting.
-  // Swapped for actual main loop in interpreter.
-};
 
 EMSCRIPTEN_KEEPALIVE int startCore(int p)
 {
   (*CoreDoCommand)(M64CMD_EXECUTE, 0, NULL);
   return 0;
 }
+
 #endif
 
 /*********************************************************************************************************
@@ -839,23 +834,56 @@ int main(int argc, char *argv[])
       // initiate async call to mount IDBFS persistent filesystem to /save
       // and when that completes start up the core with an async call to
       // "CoreDoCommand"
-      EM_ASM({
-        FS.mkdir('/save');
-        FS.mount(IDBFS, {}, '/save');
+      EM_ASM_INT({
+        var rom = Pointer_stringify($0|0);
 
-        var callback = function(e)
-        {
-          console.log("IDBFS data reflected to ram filesystem.");
-          console.log("Starting game core");
-          var startCore = Module.cwrap('startCore', 'number', ['number']);
-          startCore();
+        // first sync the IDBFS from persistent storage (game saves from previous browser sessions).
+        // Then fetch the rom we wish to play via xhr and put it into the IDBFS so normal 
+        // c++ file operations can access it easily.
+        console.log('Will load rom: ', rom);
+
+
+        //FS.mkdir('/save');
+        //FS.mount(IDBFS, {}, '/save');
+
+        var initIDBFS = function() {
+          return new Promise (
+              function(resolve, reject) {
+                console.log('Initiating async IDBFS read from peristent storage.');
+                FS.syncfs(true, function(){resolve(0);}); 
+              }
+          );
         };
 
-        FS.syncfs(true, callback);
-      });
-      // set a temporary emscripten main loop to prevent the application
-      // from existing
-      emscripten_set_main_loop(dummy_main,0, 0);
+        var fetchROM = function(rom) {
+          return new Promise( 
+            function (resolve, reject) {
+                console.log('Fetching ROM: ', rom);
+                // dummy
+                resolve();
+              }
+            );
+        };
+
+        var startCore = function() {
+          return new Promise (
+              function (resolve, reject) {
+                console.log('Starting game core');
+                var startCore = Module.cwrap('startCore', 'number', ['number']);
+                startCore();
+                resolve();
+              }
+            );
+        };
+
+        initIDBFS().
+          then(fetchROM(rom)).
+          then(startCore())
+          .catch(function(e){console.error("Error during startup promise chain: ", e);});
+
+        return 0;
+      }
+      ,l_ROMFilepath);
 #else
     /* run the game */
     (*CoreDoCommand)(M64CMD_EXECUTE, 0, NULL);
