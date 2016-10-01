@@ -957,6 +957,15 @@ EMSCRIPTEN_KEEPALIVE int startCore(int p)
 #define CALLBACK_FUNC NULL
 #endif
 
+#if EMSCRIPTEN
+
+void dummy_main(void){
+
+};
+
+#endif // EMSCRIPTEN
+
+
 #ifndef WIN32
 /* Allow external modules to call the main function as a library method.  This is useful for user
  * interfaces that simply layer on top of (rather than re-implement) UI-Console (e.g. mupen64plus-ae).
@@ -1021,7 +1030,79 @@ int main(int argc, char *argv[])
         return 5;
     }
 
-    /* Ensure that the core supports comparison feature if necessary */
+    // On emscripten we have to prepare some things asynchronously before we can start the emulator
+ #if EMSCRIPTEN
+      // initiate async call to mount IDBFS persistent filesystem to /save
+      // and when that completes start up the core with an async call to
+      // "CoreDoCommand"
+      EM_ASM_INT({
+        var rom = Pointer_stringify($0|0);
+        var url = rom;
+        if (url.indexOf('/') === 0){
+          url  = url.replace('/','');        
+        }
+
+        // first sync the IDBFS from persistent storage (game saves from previous browser sessions).
+        // Then fetch the rom we wish to play via xhr and put it into the IDBFS so normal 
+        // c++ file operations can access it easily.
+        console.log('Will load rom: ', rom);
+        
+        FS.mkdir('/roms');
+        FS.mount(IDBFS, {}, '/roms');
+
+        var initIDBFS = function() {
+          return new Promise (
+              function(resolve, reject) {
+                console.log('Initiating async IDBFS read from peristent storage.');
+                FS.syncfs(true, function(){resolve(0);}); 
+              }
+          );
+        };
+
+        var fetchROM = function() {
+          return new Promise( 
+            function (resolve, reject) {
+              console.log('Fetching ROM: ', rom);
+              Module.fetchFile(url, rom,
+                  function(){ console.log('completed load'); resolve(); },
+                  function(){ console.log('failed load.'); reject(); });
+            }
+          );
+        };
+
+        var startCore = function() {
+          return new Promise (
+              function (resolve, reject) {
+                console.log('Starting game core');
+                var startCore = Module.cwrap('startEmulator', 'number', ['number']);
+                startCore(0);
+                resolve(0);
+              }
+            );
+        };
+
+        initIDBFS()
+          .then(fetchROM)
+          .then(startCore)
+          .catch(function(e){console.error("Error during startup promise chain: ", e);});
+
+        return 0;
+      }
+      ,l_ROMFilepath);
+
+      emscripten_set_main_loop(dummy_main,0,1);
+    
+    return 0;
+}
+
+
+int EMSCRIPTEN_KEEPALIVE startEmulator(int dummy)
+{
+  int i = 0;
+  m64p_error rval = 0;
+
+#endif // EMSCRIPTEN
+    /* Handle the core comparison feature */
     if (l_CoreCompareMode != 0 && !(g_CoreCapabilities & M64CAPS_CORE_COMPARE))
     {
         DebugMessage(M64MSG_ERROR, "can't use --core-compare feature with this Mupen64Plus core library.");
@@ -1087,7 +1168,6 @@ int main(int argc, char *argv[])
         return 10;
     }
     free(ROM_buffer); /* the core copies the ROM image, so we can release this buffer immediately */
-
     /* handle the cheat codes */
     CheatStart(l_CheatMode, l_CheatNumList);
     if (l_CheatMode == CHEAT_SHOW_LIST)
@@ -1189,65 +1269,10 @@ int main(int argc, char *argv[])
        before the relatively long-running game. */
     if (l_SaveOptions && (*ConfigHasUnsavedChanges)(NULL))
         (*ConfigSaveFile)();
-
-#if EMSCRIPTEN
-      // initiate async call to mount IDBFS persistent filesystem to /save
-      // and when that completes start up the core with an async call to
-      // "CoreDoCommand"
-      EM_ASM_INT({
-        var rom = Pointer_stringify($0|0);
-
-        // first sync the IDBFS from persistent storage (game saves from previous browser sessions).
-        // Then fetch the rom we wish to play via xhr and put it into the IDBFS so normal 
-        // c++ file operations can access it easily.
-        console.log('Will load rom: ', rom);
-
-
-        //FS.mkdir('/save');
-        //FS.mount(IDBFS, {}, '/save');
-
-        var initIDBFS = function() {
-          return new Promise (
-              function(resolve, reject) {
-                console.log('Initiating async IDBFS read from peristent storage.');
-                FS.syncfs(true, function(){resolve(0);}); 
-              }
-          );
-        };
-
-        var fetchROM = function(rom) {
-          return new Promise( 
-            function (resolve, reject) {
-                console.log('Fetching ROM: ', rom);
-                // dummy
-                resolve();
-              }
-            );
-        };
-
-        var startCore = function() {
-          return new Promise (
-              function (resolve, reject) {
-                console.log('Starting game core');
-                var startCore = Module.cwrap('startCore', 'number', ['number']);
-                startCore();
-                resolve();
-              }
-            );
-        };
-
-        initIDBFS().
-          then(fetchROM(rom)).
-          then(startCore())
-          .catch(function(e){console.error("Error during startup promise chain: ", e);});
-
-        return 0;
-      }
-      ,l_ROMFilepath);
+    
 #else
     /* run the game */
     (*CoreDoCommand)(M64CMD_EXECUTE, 0, NULL);
-#endif
 
 #if !(EMSCRIPTEN)
     /* detach plugins from core and unload them */
