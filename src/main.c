@@ -79,6 +79,8 @@ static const char *l_SaveStatePath = NULL;     // save state to load at startup
 
 #if defined(SHAREDIR)
   static const char *l_DataDirPath = SHAREDIR;
+#elif defined(EMSCRIPTEN)
+  static const char *l_DataDirPath = "/data"; 
 #else
   static const char *l_DataDirPath = NULL;
 #endif
