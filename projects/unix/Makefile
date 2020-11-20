@@ -76,10 +76,20 @@ ifeq ($(OS), MINGW)
   CFLAGS += -lpthread
   LDLIBS += -lpthread
 else
-  ifneq ($(OS), OSX)
-    CFLAGS += -pthread
-    LDLIBS += -pthread
-  endif
+   #CFLAGS += -pthread
+#   LDLIBS += -pthread
+endif
+
+
+# ifneq($(EMSCRIPTEN),1)
+#   LDLIBS += -libdfs.js'
+# endif
+
+ifeq ($(PIE), 1)
+  CFLAGS += -fPIE
+  LDFLAGS += -pie
+else
+  CFLAGS += -fno-PIE
 endif
 
 # set special flags per-system
@@ -94,7 +104,7 @@ ifeq ($(OS), OSX)
     ifeq ($(ARCH_DETECTED), 64BITS)
       CFLAGS += -pipe -arch x86_64 -mmacosx-version-min=10.6 -isysroot $(OSX_SDK_PATH)
     else
-      CFLAGS += -pipe -mmmx -msse -fomit-frame-pointer -arch i686 -mmacosx-version-min=10.6 -isysroot $(OSX_SDK_PATH)
+      CFLAGS += -pipe -mmmx -msse --msimd128 -fomit-frame-pointer -arch i686 -mmacosx-version-min=10.5 -isysroot $(OSX_SDK_PATH)
     endif
   endif
 endif
@@ -331,7 +341,7 @@ uninstall:
 
 
 # build dependency files
-CFLAGS += -MD -MP
+CFLAGS += -MD -MP 
 -include $(OBJECTS:.o=.d)
 
 # standard build rules

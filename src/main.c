@@ -77,7 +77,7 @@ static const char *l_ConfigDirPath = "/data";
 #ifdef INPUT_ROM
 #define xstr(a) str(a)
 #define str(a) #a
-static const char *l_ROMFilepath = "/roms/" xstr(INPUT_ROM) ;
+static const char *l_ROMFilepath = "/roms/super_mario_64.z64"; //xstr(INPUT_ROM) ;
 #else
 static const char *l_ROMFilepath = NULL;
 #endif
@@ -330,7 +330,7 @@ static m64p_error OpenConfigurationHandles(void)
     //(*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "./plugins/mupen64plus-video-glide64mk2-web" OSAL_DLL_EXTENSION, "Filename of video plugin");
     (*ConfigSetDefaultString)(l_ConfigUI, "InputPlugin", "./plugins/mupen64plus-input-sdl-web" OSAL_DLL_EXTENSION, "Filename of input plugin");
     (*ConfigSetDefaultString)(l_ConfigUI, "RspPlugin", "./plugins/mupen64plus-rsp-hle-web" OSAL_DLL_EXTENSION, "Filename of RSP plugin");
-    (*ConfigSetDefaultString)(l_ConfigUI, "AudioPlugin", "./plugins/mupen64plus-audio-web" OSAL_DLL_EXTENSION, "Filename of audio plugin");
+    //(*ConfigSetDefaultString)(l_ConfigUI, "AudioPlugin", "./plugins/mupen64plus-audio-web" OSAL_DLL_EXTENSION, "Filename of audio plugin");
 #else
     (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "mupen64plus-video-rice" OSAL_DLL_EXTENSION, "Filename of video plugin");
     (*ConfigSetDefaultString)(l_ConfigUI, "AudioPlugin", "mupen64plus-audio-sdl" OSAL_DLL_EXTENSION, "Filename of audio plugin");
@@ -1038,7 +1038,7 @@ int main(int argc, char *argv[])
       // and when that completes start up the core with an async call to
       // "CoreDoCommand"
       EM_ASM_INT({
-        var rom = Pointer_stringify($0|0);
+        var rom = UTF8ToString($0|0);
         var url = rom;
         if (url.indexOf('/') === 0){
           url  = url.replace('/','');        
@@ -1076,8 +1076,9 @@ int main(int argc, char *argv[])
           return new Promise (
               function (resolve, reject) {
                 console.log('Starting game core');
-                var startCore = Module.cwrap('startEmulator', 'number', ['number']);
-                startCore(0);
+                var doStartCore = Module.cwrap('startEmulator', 'number', ['number']);
+                doStartCore(0);
+                console.log('Finished starting game core');
                 resolve(0);
               }
             );
@@ -1089,8 +1090,10 @@ int main(int argc, char *argv[])
           .catch(function(e){console.error("Error during startup promise chain: ", e);});
 
         return 0;
-      }
-      ,l_ROMFilepath);
+        }
+        ,l_ROMFilepath);
+
+      printf("emscripten_set_main_loop\n");
 
       emscripten_set_main_loop(dummy_main,0,1);
     
@@ -1179,6 +1182,8 @@ int EMSCRIPTEN_KEEPALIVE startEmulator(int dummy)
         DetachCoreLib();
         return 11;
     }
+
+    DebugMessage(M64MSG_INFO, "Loading Plugins");
 
     /* search for and load plugins */
     rval = PluginSearchLoad(l_ConfigUI);
