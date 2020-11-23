@@ -72,7 +72,7 @@ static m64p_handle l_Config64DD = NULL;
 
 #if EMSCRIPTEN
 
-static const char *l_CoreLibPath = "plugins/mupen64plus-core-web.js";
+static const char *l_CoreLibPath = "/plugins/mupen64plus-core-web.so";
 static const char *l_ConfigDirPath = "/data";
 #ifdef INPUT_ROM
 #define xstr(a) str(a)
@@ -323,13 +323,13 @@ static m64p_error OpenConfigurationHandles(void)
 
     /* Set default values for my Config parameters */
     (*ConfigSetDefaultFloat)(l_ConfigUI, "Version", CONFIG_PARAM_VERSION,  "Mupen64Plus UI-Console config parameter set version number.  Please don't change this version number.");
-    (*ConfigSetDefaultString)(l_ConfigUI, "PluginDir", OSAL_CURRENT_DIR, "Directory in which to search for plugins");
+    (*ConfigSetDefaultString)(l_ConfigUI, "PluginDir", "/plugins", "Directory in which to search for plugins");
 
 #if EMSCRIPTEN
-    (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "./plugins/mupen64plus-video-rice-web" OSAL_DLL_EXTENSION, "Filename of video plugin");
+    (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "/plugins/mupen64plus-video-rice-web" OSAL_DLL_EXTENSION, "Filename of video plugin");
     //(*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "./plugins/mupen64plus-video-glide64mk2-web" OSAL_DLL_EXTENSION, "Filename of video plugin");
-    (*ConfigSetDefaultString)(l_ConfigUI, "InputPlugin", "./plugins/mupen64plus-input-sdl-web" OSAL_DLL_EXTENSION, "Filename of input plugin");
-    (*ConfigSetDefaultString)(l_ConfigUI, "RspPlugin", "./plugins/mupen64plus-rsp-hle-web" OSAL_DLL_EXTENSION, "Filename of RSP plugin");
+    (*ConfigSetDefaultString)(l_ConfigUI, "InputPlugin", "/plugins/mupen64plus-input-sdl-web" OSAL_DLL_EXTENSION, "Filename of input plugin");
+    (*ConfigSetDefaultString)(l_ConfigUI, "RspPlugin", "/plugins/mupen64plus-rsp-hle-web" OSAL_DLL_EXTENSION, "Filename of RSP plugin");
     //(*ConfigSetDefaultString)(l_ConfigUI, "AudioPlugin", "./plugins/mupen64plus-audio-web" OSAL_DLL_EXTENSION, "Filename of audio plugin");
 #else
     (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "mupen64plus-video-rice" OSAL_DLL_EXTENSION, "Filename of video plugin");
@@ -990,9 +990,12 @@ int main(int argc, char *argv[])
     if (ParseCommandLineInitial(argc, (const char **) argv) != 0)
         return 1;
 
+    printf("Attaching core lib\n");
     /* load the Mupen64Plus core library */
     if (AttachCoreLib(l_CoreLibPath) != M64ERR_SUCCESS)
         return 2;
+
+    printf("Done attaching core lib\n");
 
     /* start the Mupen64Plus core library, load the configuration file */
 
