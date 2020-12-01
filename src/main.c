@@ -1070,7 +1070,7 @@ int main(int argc, char *argv[])
               console.log('Fetching ROM: ', rom);
               Module.fetchFile(url, rom,
                   function(){ console.log('completed load'); resolve(); },
-                  function(){ console.log('failed load.'); reject(); });
+                               function(e){ console.log('failed load: %o', e); reject(); });
             }
           );
         };
