@@ -72,7 +72,7 @@ static m64p_handle l_Config64DD = NULL;
 
 #if EMSCRIPTEN
 
-static const char *l_CoreLibPath = "/plugins/mupen64plus-core-web.so";
+static const char *l_CoreLibPath = "/plugins/mupen64plus-core-web-netplay-web.so";
 static const char *l_ConfigDirPath = "/data";
 #ifdef INPUT_ROM
 #define xstr(a) str(a)
@@ -961,7 +961,7 @@ EMSCRIPTEN_KEEPALIVE int startCore(int p)
 
 #if EMSCRIPTEN
 
-void dummy_main(void){
+void dummy_main(int* dummy_arg){
 
 };
 
@@ -1109,7 +1109,8 @@ int main(int argc, char *argv[])
 
       printf("emscripten_set_main_loop\n");
 
-      emscripten_set_main_loop(dummy_main,0,1);
+      //int dummy_arg = 0;
+      //emscripten_set_main_loop_arg(dummy_main, &dummy_arg, 0, 1);
     
     return 0;
 }
