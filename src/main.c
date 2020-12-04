@@ -1041,11 +1041,13 @@ int main(int argc, char *argv[])
       // and when that completes start up the core with an async call to
       // "CoreDoCommand"
       EM_ASM_INT({
-        var rom = UTF8ToString($0|0);
+
+        var rom = Module.romPath;
         var url = rom;
         if (url.indexOf('/') === 0){
           url  = url.replace('/','');        
         }
+
 
         // first sync the IDBFS from persistent storage (game saves from previous browser sessions).
         // Then fetch the rom we wish to play via xhr and put it into the IDBFS so normal 
@@ -1064,13 +1066,23 @@ int main(int argc, char *argv[])
           );
         };
 
-        var fetchROM = function() {
+        const writeROM = function() {
           return new Promise( 
             function (resolve, reject) {
-              console.log('Fetching ROM: ', rom);
-              Module.fetchFile(url, rom,
-                  function(){ console.log('completed load'); resolve(); },
-                               function(e){ console.log('failed load: %o', e); reject(); });
+
+              const path = rom.substr(0, rom.lastIndexOf('/'));
+              const filename = rom.substr(rom.lastIndexOf('/') + 1);
+
+              FS.writeFile(rom, new Uint8Array(Module.romData));
+
+              var contents = FS.readFile(rom, { encoding: 'binary' });
+
+              console.log("Written file contents: %o", contents);
+
+              // no longer needed
+              delete Module.romData;
+
+              resolve();
             }
           );
         };
@@ -1088,13 +1100,12 @@ int main(int argc, char *argv[])
         };
 
         initIDBFS()
-          .then(fetchROM)
+          .then(writeROM)
           .then(startCore)
           .catch(function(e){console.error("Error during startup promise chain: ", e);});
 
         return 0;
-        }
-        ,l_ROMFilepath);
+        });
 
       printf("emscripten_set_main_loop\n");
 
