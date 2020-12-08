@@ -1210,6 +1210,9 @@ int EMSCRIPTEN_KEEPALIVE startEmulator(int dummy)
         return 12;
     }
 
+
+    // TODO - reenable
+#if (!EMSCRIPTEN)
     /* Parse and set plugin options. Doing this after loading the plugins
        allows the plugins to set up their own defaults first. */
     rval = ParseCommandLinePlugin(argc, (const char **) argv);
@@ -1220,6 +1223,8 @@ int EMSCRIPTEN_KEEPALIVE startEmulator(int dummy)
         DetachCoreLib();
         return 5;
     }
+#endif
+    
 
     /* attach plugins to core */
     for (i = 0; i < 4; i++)
@@ -1292,7 +1297,6 @@ int EMSCRIPTEN_KEEPALIVE startEmulator(int dummy)
     if (l_SaveOptions && (*ConfigHasUnsavedChanges)(NULL))
         (*ConfigSaveFile)();
     
-#else
     /* run the game */
     (*CoreDoCommand)(M64CMD_EXECUTE, 0, NULL);
 
