@@ -326,8 +326,8 @@ static m64p_error OpenConfigurationHandles(void)
     (*ConfigSetDefaultString)(l_ConfigUI, "PluginDir", "/plugins", "Directory in which to search for plugins");
 
 #if EMSCRIPTEN
-    (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "/plugins/mupen64plus-video-rice-web" OSAL_DLL_EXTENSION, "Filename of video plugin");
-    //(*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "./plugins/mupen64plus-video-glide64mk2-web" OSAL_DLL_EXTENSION, "Filename of video plugin");
+    //(*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "/plugins/mupen64plus-video-rice-web" OSAL_DLL_EXTENSION, "Filename of video plugin");
+    (*ConfigSetDefaultString)(l_ConfigUI, "VideoPlugin", "/plugins/mupen64plus-video-glide64mk2-web" OSAL_DLL_EXTENSION, "Filename of video plugin");
     (*ConfigSetDefaultString)(l_ConfigUI, "InputPlugin", "/plugins/mupen64plus-input-sdl-web" OSAL_DLL_EXTENSION, "Filename of input plugin");
     (*ConfigSetDefaultString)(l_ConfigUI, "RspPlugin", "/plugins/mupen64plus-rsp-hle-web" OSAL_DLL_EXTENSION, "Filename of RSP plugin");
     (*ConfigSetDefaultString)(l_ConfigUI, "AudioPlugin", "./plugins/mupen64plus-audio-web" OSAL_DLL_EXTENSION, "Filename of audio plugin");
@@ -819,10 +819,6 @@ static m64p_error ParseCommandLineMain(int argc, const char **argv)
     /* missing ROM filepath */
     DebugMessage(M64MSG_ERROR, "no ROM filepath given");
     return M64ERR_INPUT_INVALID;
-#else
-    int hackemumode = 0;
-    (*ConfigSetParameter)(l_ConfigCore, "R4300Emulator", M64TYPE_INT, &hackemumode);
-    return M64ERR_SUCCESS;
 #endif
 }
 
@@ -933,16 +929,6 @@ static m64p_media_loader l_media_loader =
     media_loader_get_dd_rom,
     media_loader_get_dd_disk
 };
-
-#if EMSCRIPTEN
-
-EMSCRIPTEN_KEEPALIVE int startCore(int p)
-{
-  (*CoreDoCommand)(M64CMD_EXECUTE, 0, NULL);
-  return 0;
-}
-
-#endif
 
 /*********************************************************************************************************
 * main function
@@ -1116,8 +1102,9 @@ int main(int argc, char *argv[])
 }
 
 
-int EMSCRIPTEN_KEEPALIVE startEmulator(int dummy)
+int EMSCRIPTEN_KEEPALIVE startEmulator(int argc)
 {
+
   int i = 0;
   m64p_error rval = 0;
 
