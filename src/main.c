@@ -1023,10 +1023,17 @@ int main(int argc, char *argv[])
 
     // On emscripten we have to prepare some things asynchronously before we can start the emulator
  #if EMSCRIPTEN
+
+    int emuMode = EM_ASM_INT({ return Module.coreConfig.emuMode });
+
+    (*ConfigSetParameter)(l_ConfigCore, "R4300Emulator", M64TYPE_INT, &emuMode);
+    
       // initiate async call to mount IDBFS persistent filesystem to /save
       // and when that completes start up the core with an async call to
       // "CoreDoCommand"
       EM_ASM_INT({
+
+
 
         var rom = Module.romPath;
         var url = rom;
