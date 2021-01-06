@@ -25,7 +25,13 @@
 #include <string.h>
 
 #include "cheat.h"
+
+#if (!M64P_STATIC_PLUGINS)
 #include "core_interface.h"
+#else
+#include "core_interface_static.h"
+#endif
+
 #include "m64p_types.h"
 #include "main.h"
 

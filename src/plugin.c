@@ -27,7 +27,13 @@
     #include <CoreFoundation/CoreFoundation.h>
 #endif
 
+#if (!M64P_STATIC_PLUGINS)
 #include "core_interface.h"
+#else
+#include "core_interface_static.h"
+#endif
+
+
 #include "m64p_common.h"
 #include "m64p_types.h"
 #include "main.h"  /* for the debug callback function */
@@ -44,6 +50,7 @@ const char *g_AudioPlugin = NULL;      // pointer to audio plugin specified at c
 const char *g_InputPlugin = NULL;      // pointer to input plugin specified at commandline (if any)
 const char *g_RspPlugin = NULL;        // pointer to rsp plugin specified at commandline (if any)
 
+
 plugin_map_node g_PluginMap[] = {{M64PLUGIN_GFX,   "Video", NULL, "", NULL, 0 },
                                  {M64PLUGIN_AUDIO, "Audio", NULL, "", NULL, 0 },
                                  {M64PLUGIN_INPUT, "Input", NULL, "", NULL, 0 },
@@ -52,6 +59,7 @@ plugin_map_node g_PluginMap[] = {{M64PLUGIN_GFX,   "Video", NULL, "", NULL, 0 },
 /* local functions */
 static m64p_error PluginLoadTry(const char *filepath, int MapIndex)
 {
+
     /* try to open a shared library at the given filepath */
     m64p_dynlib_handle handle;
     m64p_error rval = osal_dynlib_open(&handle, filepath);

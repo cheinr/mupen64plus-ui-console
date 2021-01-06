@@ -262,19 +262,19 @@ endif
 SOURCE = \
 	$(SRCDIR)/cheat.c \
 	$(SRCDIR)/compare_core.c \
-	$(SRCDIR)/core_interface.c \
+	$(SRCDIR)/core_interface_static.c \
 	$(SRCDIR)/debugger.c \
 	$(SRCDIR)/main.c \
-	$(SRCDIR)/plugin.c
+	$(SRCDIR)/plugin_static.c
 
 ifeq ($(OS), MINGW)
 SOURCE += \
 	$(SRCDIR)/osal_dynamiclib_win32.c \
 	$(SRCDIR)/osal_files_win32.c
 else
-SOURCE += \
-	$(SRCDIR)/osal_dynamiclib_unix.c \
-	$(SRCDIR)/osal_files_unix.c
+# SOURCE += \
+# 	$(SRCDIR)/osal_dynamiclib_unix.c \
+# 	$(SRCDIR)/osal_files_unix.c
 endif
 
 # generate a list of object files build, make a temporary directory for them

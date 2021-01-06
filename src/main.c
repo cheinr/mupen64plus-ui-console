@@ -36,7 +36,13 @@
 
 #include "cheat.h"
 #include "compare_core.h"
+
+#if (!M64P_STATIC_PLUGINS)
 #include "core_interface.h"
+#else
+#include "core_interface_static.h"
+#endif
+
 #include "debugger.h"
 #include "m64p_types.h"
 #include "main.h"
@@ -77,6 +83,7 @@ static const char *l_ConfigDirPath = "/data";
 #ifdef INPUT_ROM
 #define xstr(a) str(a)
 #define str(a) #a
+
 static const char *l_ROMFilepath = "/roms/super_mario_64.z64"; //xstr(INPUT_ROM) ;
 #else
 static const char *l_ROMFilepath = NULL;
@@ -105,9 +112,11 @@ static int   l_TestShotIdx = 0;          // index of next screenshot frame in li
 static int   l_SaveOptions = 1;          // save command-line options in configuration file (enabled by default)
 static int   l_CoreCompareMode = 0;      // 0 = disable, 1 = send, 2 = receive
 static int   l_LaunchDebugger = 0;
+static int   l_Player = 0;
 
 static eCheatMode l_CheatMode = CHEAT_DISABLE;
 static char      *l_CheatNumList = NULL;
+
 
 /*********************************************************************************************************
  *  Callback functions from the core
@@ -232,6 +241,12 @@ static int is_path_separator(char c)
     return strchr(OSAL_DIR_SEPARATORS, c) != NULL;
 }
 
+#if M64P_STATIC_PLUGINS
+
+extern char* combinepath(const char* first, const char *second);
+
+#else
+
 char* combinepath(const char* first, const char *second)
 {
     size_t len_first, off_second = 0;
@@ -249,6 +264,8 @@ char* combinepath(const char* first, const char *second)
 
     return formatstr("%.*s%c%s", (int) len_first, first, OSAL_DIR_SEPARATORS[0], second + off_second);
 }
+
+#endif
 
 
 /*********************************************************************************************************
@@ -624,6 +641,9 @@ static m64p_error ParseCommandLineMain(int argc, const char **argv)
         {
             int Fullscreen = 1;
             (*ConfigSetParameter)(l_ConfigVideo, "Fullscreen", M64TYPE_BOOL, &Fullscreen);
+        }
+        else if (strcmp(argv[i], "--player") == 0) {
+          l_Player = atoi(argv[i+1]);
         }
         else if (strcmp(argv[i], "--windowed") == 0)
         {
@@ -1025,6 +1045,7 @@ int main(int argc, char *argv[])
  #if EMSCRIPTEN
 
     int emuMode = EM_ASM_INT({ return Module.coreConfig.emuMode });
+    l_Player = EM_ASM_INT({ return Module.netplayConfig.player });
 
     (*ConfigSetParameter)(l_ConfigCore, "R4300Emulator", M64TYPE_INT, &emuMode);
     
@@ -1084,7 +1105,7 @@ int main(int argc, char *argv[])
           return new Promise (
               function (resolve, reject) {
                 console.log('Starting game core');
-                var doStartCore = Module.cwrap('startEmulator', 'number', ['number']);
+                var doStartCore = Module.cwrap('startEmulator', 'number', ['number'], { async: true });
                 doStartCore(0);
                 console.log('Finished starting game core');
                 resolve(0);
@@ -1111,7 +1132,6 @@ int main(int argc, char *argv[])
 
 int EMSCRIPTEN_KEEPALIVE startEmulator(int argc)
 {
-
   int i = 0;
   m64p_error rval = 0;
 
@@ -1137,6 +1157,35 @@ int EMSCRIPTEN_KEEPALIVE startEmulator(int argc)
     if (l_SaveOptions)
         SaveConfigurationOptions();
 
+#if EMSCRIPTEN
+    /* Start Netplay */
+    if (l_Player != 0) {
+      printf("Starting netplay!\n");
+
+      char* serverHostName = NULL;
+      uint32_t version;
+
+      if ((*CoreDoCommand)(M64CMD_NETPLAY_GET_VERSION, 0x010000, &version) == M64ERR_SUCCESS) {
+    
+        if ((*CoreDoCommand)(M64CMD_NETPLAY_INIT, 0, serverHostName) != M64ERR_SUCCESS) {
+          DebugMessage(M64MSG_ERROR, "failed to start netplay");
+        } else {
+          printf("Started netplay successfully\n");
+        }
+
+        if ((*CoreDoCommand)(M64CMD_NETPLAY_CONTROL_PLAYER, l_Player, &l_Player) != M64ERR_SUCCESS) {
+          DebugMessage(M64MSG_ERROR, "failed to set netplay player control");
+        } else {
+          printf("Set player control successfully for %d\n", l_Player);
+        }
+      
+      } else {
+        printf("netplay version mismatch!\n");
+      }      
+    }
+
+#endif // EMSCRIPTEN
+  
     /* load ROM image */
     FILE *fPtr = fopen(l_ROMFilepath, "rb");
     if (fPtr == NULL)

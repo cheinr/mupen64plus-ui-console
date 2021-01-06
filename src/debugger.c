@@ -23,7 +23,12 @@
 #include <string.h>
 #include <stdint.h>
 
+#if (!EMSCRIPTEN)
 #include "core_interface.h"
+#else
+#include "core_interface_static.h"
+#endif
+
 #include "debugger.h"
 
 #include <SDL.h>
