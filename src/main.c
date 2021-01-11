@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <SDL.h>
 #include <SDL_main.h>
@@ -116,6 +117,8 @@ static int   l_Player = 0;
 
 static eCheatMode l_CheatMode = CHEAT_DISABLE;
 static char      *l_CheatNumList = NULL;
+
+
 
 
 /*********************************************************************************************************
@@ -992,6 +995,8 @@ int main(int argc, char *argv[])
     printf("             |_|         https://mupen64plus.org/               \n");
     printf("%s Version %i.%i.%i\n\n", CONSOLE_UI_NAME, VERSION_PRINTF_SPLIT(CONSOLE_UI_VERSION));
 
+    srand(time(NULL));
+    
     /* bootstrap some special parameters from the command line */
     if (ParseCommandLineInitial(argc, (const char **) argv) != 0)
         return 1;
@@ -1173,7 +1178,9 @@ int EMSCRIPTEN_KEEPALIVE startEmulator(int argc)
           printf("Started netplay successfully\n");
         }
 
-        if ((*CoreDoCommand)(M64CMD_NETPLAY_CONTROL_PLAYER, l_Player, &l_Player) != M64ERR_SUCCESS) {
+        int regId = rand();
+        
+        if ((*CoreDoCommand)(M64CMD_NETPLAY_CONTROL_PLAYER, l_Player, &regId) != M64ERR_SUCCESS) {
           DebugMessage(M64MSG_ERROR, "failed to set netplay player control");
         } else {
           printf("Set player control successfully for %d\n", l_Player);
