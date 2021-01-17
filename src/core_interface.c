@@ -121,6 +121,8 @@ m64p_dynlib_handle CoreHandle = NULL;
 /* functions */
 m64p_error AttachCoreLib(const char *CoreLibFilepath)
 {
+
+  printf("Attaching dynamic core lib\n");
     /* check if Core DLL is already attached */
     if (CoreHandle != NULL)
         return M64ERR_INVALID_STATE;

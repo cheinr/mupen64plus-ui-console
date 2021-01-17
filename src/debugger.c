@@ -23,7 +23,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#if (!EMSCRIPTEN)
+#if (!M64P_STATIC_PLUGINS)
 #include "core_interface.h"
 #else
 #include "core_interface_static.h"

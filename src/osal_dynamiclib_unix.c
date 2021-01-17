@@ -39,6 +39,8 @@ m64p_error osal_dynlib_open(m64p_dynlib_handle *pLibHandle, const char *pccLibra
 
     if (*pLibHandle == NULL)
     {
+
+      printf("pLibHandle == NULL\n");
         /* only print an error message if there is a directory separator (/) in the pathname */
         /* this prevents us from throwing an error for the use case where Mupen64Plus is not installed */
         if (strchr(pccLibraryPath, '/') != NULL)

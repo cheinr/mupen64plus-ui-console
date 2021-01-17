@@ -41,6 +41,7 @@ m64p_dynlib_handle CoreHandle = NULL;
 
 m64p_error AttachCoreLib(const char *CoreLibFilepath)
 {
+
 	/* check the Core and API versions for compatibility with this front-end */
 	m64p_plugin_type PluginType = (m64p_plugin_type) 0;
     int Compatible = 0;
