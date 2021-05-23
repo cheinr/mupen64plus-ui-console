@@ -85,7 +85,7 @@ static const char *l_ConfigDirPath = "/data";
 #define xstr(a) str(a)
 #define str(a) #a
 
-static const char *l_ROMFilepath = "/roms/super_mario_64.z64"; //xstr(INPUT_ROM) ;
+static const char *l_ROMFilepath = "/roms/rom_data"; //xstr(INPUT_ROM) ;
 #else
 static const char *l_ROMFilepath = NULL;
 #endif
@@ -1059,19 +1059,11 @@ int main(int argc, char *argv[])
       // "CoreDoCommand"
       EM_ASM_INT({
 
-
-
-        var rom = Module.romPath;
-        var url = rom;
-        if (url.indexOf('/') === 0){
-          url  = url.replace('/','');        
-        }
-
+        const romLocation = UTF8ToString($0);
 
         // first sync the IDBFS from persistent storage (game saves from previous browser sessions).
-        // Then fetch the rom we wish to play via xhr and put it into the IDBFS so normal 
         // c++ file operations can access it easily.
-        console.log('Will load rom: ', rom);
+        console.log('Will load rom: ', romLocation);
         
         FS.mkdir('/roms');
         FS.mount(IDBFS, {}, '/roms');
@@ -1089,12 +1081,12 @@ int main(int argc, char *argv[])
           return new Promise( 
             function (resolve, reject) {
 
-              const path = rom.substr(0, rom.lastIndexOf('/'));
-              const filename = rom.substr(rom.lastIndexOf('/') + 1);
+              const path = romLocation.substr(0, romLocation.lastIndexOf('/'));
+              const filename = romLocation.substr(romLocation.lastIndexOf('/') + 1);
 
-              FS.writeFile(rom, new Uint8Array(Module.romData));
+              FS.writeFile(romLocation, new Uint8Array(Module.romData));
 
-              var contents = FS.readFile(rom, { encoding: 'binary' });
+              var contents = FS.readFile(romLocation, { encoding: 'binary' });
 
               console.log("Written file contents: %o", contents);
 
@@ -1124,7 +1116,7 @@ int main(int argc, char *argv[])
           .catch(function(e){console.error("Error during startup promise chain: ", e);});
 
         return 0;
-        });
+        }, l_ROMFilepath);
 
       printf("emscripten_set_main_loop\n");
 
