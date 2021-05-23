@@ -81,15 +81,7 @@ static m64p_handle l_Config64DD = NULL;
 
 static const char *l_CoreLibPath = "/plugins/mupen64plus-core-web-netplay-web.so";
 static const char *l_ConfigDirPath = "/data";
-#ifdef INPUT_ROM
-#define xstr(a) str(a)
-#define str(a) #a
-
-static const char *l_ROMFilepath = "/roms/rom_data"; //xstr(INPUT_ROM) ;
-#else
-static const char *l_ROMFilepath = NULL;
-#endif
-
+static const char *l_ROMFilepath = "/roms/rom_data";
 #else
 
 static const char *l_CoreLibPath = NULL;
