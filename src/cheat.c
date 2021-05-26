@@ -207,6 +207,9 @@ static void CheatAddVariables(cheat_code * Code, char *varlist)
 
 static void ReadCheats(char *RomSection)
 {
+
+    DebugMessage(M64MSG_INFO, "Skipping cheat code file load.");
+  
     sCheatInfo *curr_code = NULL;
     const char *romdbpath = ConfigGetSharedDataFilepath(CHEAT_FILE);
     if (romdbpath == NULL)
