@@ -81,7 +81,7 @@ static m64p_handle l_Config64DD = NULL;
 
 static const char *l_CoreLibPath = "/plugins/mupen64plus-core-web-netplay-web.so";
 static const char *l_ConfigDirPath = "/data";
-static const char *l_ROMFilepath = "/roms/rom_data";
+static const char *l_ROMFilepath = "/mupen64plus/rom_data";
 #else
 
 static const char *l_CoreLibPath = NULL;
@@ -1057,14 +1057,20 @@ int main(int argc, char *argv[])
         // c++ file operations can access it easily.
         console.log('Will load rom: ', romLocation);
         
-        FS.mkdir('/roms');
-        FS.mount(IDBFS, {}, '/roms');
+        FS.mkdir('/mupen64plus');
+        FS.mount(IDBFS, {}, '/mupen64plus');
 
         var initIDBFS = function() {
           return new Promise (
               function(resolve, reject) {
                 console.log('Initiating async IDBFS read from peristent storage.');
-                FS.syncfs(true, function(){resolve(0);}); 
+
+                FS.syncfs(true, function(err){
+                    if (err) {
+                      reject(err);
+                    }
+                    resolve(0);
+                  }); 
               }
           );
         };
@@ -1076,6 +1082,7 @@ int main(int argc, char *argv[])
               const path = romLocation.substr(0, romLocation.lastIndexOf('/'));
               const filename = romLocation.substr(romLocation.lastIndexOf('/') + 1);
 
+                                                       
               FS.writeFile(romLocation, new Uint8Array(Module.romData));
 
               var contents = FS.readFile(romLocation, { encoding: 'binary' });
