@@ -1060,17 +1060,18 @@ int main(int argc, char *argv[])
         FS.mkdir('/mupen64plus');
         FS.mount(IDBFS, {}, '/mupen64plus');
 
-        var initIDBFS = function() {
+        const initIDBFS = function() {
           return new Promise (
               function(resolve, reject) {
                 console.log('Initiating async IDBFS read from peristent storage.');
 
-                FS.syncfs(true, function(err){
+                FS.syncfs(true, function(err) {
+                    console.log('sync complete!');
                     if (err) {
                       reject(err);
                     }
                     resolve(0);
-                  }); 
+                  });
               }
           );
         };
@@ -1087,12 +1088,43 @@ int main(int argc, char *argv[])
 
               var contents = FS.readFile(romLocation, { encoding: 'binary' });
 
-              console.log("Written file contents: %o", contents);
+              console.log('Written file contents: %o', contents);
 
               // no longer needed
               delete Module.romData;
 
               resolve();
+            }
+          );
+        };
+
+        const copyInputAutoConfig = function() {
+          return new Promise( 
+            function (resolve, reject) {
+
+              const fileExists = FS.analyzePath('/mupen64plus/data/InputAutoCfg.ini', false).exists;
+
+              if (!fileExists) {
+
+                const contents = FS.readFile('/data/InputAutoCfg.ini', { encoding: 'utf8' });
+
+                const dataDirExists = FS.analyzePath('/mupen64plus/data', false).exists;
+
+                if (!dataDirExists) {
+                  FS.mkdir('/mupen64plus/data');
+                }
+
+                FS.writeFile('/mupen64plus/data/InputAutoCfg.ini', contents);
+
+                FS.syncfs(false, function(err){
+                    if (err) {
+                      reject(err);
+                    }
+                    resolve();
+                  });
+              } else {
+                resolve();
+              }
             }
           );
         };
@@ -1110,18 +1142,17 @@ int main(int argc, char *argv[])
         };
 
         initIDBFS()
+          .then(copyInputAutoConfig)
           .then(writeROM)
           .then(startCore)
-          .catch(function(e){console.error("Error during startup promise chain: ", e);});
+          .catch(function(e){console.error('Error during startup promise chain: ', e);});
 
         return 0;
         }, l_ROMFilepath);
 
-      printf("emscripten_set_main_loop\n");
-
       //int dummy_arg = 0;
       //emscripten_set_main_loop_arg(dummy_main, &dummy_arg, 0, 1);
-    
+      
     return 0;
 }
 
