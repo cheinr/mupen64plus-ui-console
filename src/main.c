@@ -1038,9 +1038,72 @@ int main(int argc, char *argv[])
         return 5;
     }
 
-    // On emscripten we have to prepare some things asynchronously before we can start the emulator
- #if EMSCRIPTEN
 
+
+#if EMSCRIPTEN
+    EM_ASM_INT({
+
+        const start = function() {
+          const doStart = Module.cwrap('start', 'number', ['number']);
+          doStart(0);
+        };
+        
+        const pause = function(pauseTargets) {
+          const netplayEnabled = Module.netplayConfig && Module.netplayConfig.player !== 0;
+
+          if (netplayEnabled) {
+            const netplayPause = Module.cwrap('netplay_request_pause', null, ['number']);
+
+            const pauseTargetBufferPtr = Module._malloc(4*4); // 4 32bit numbers
+
+            pauseTargets.forEach(function(target, index) {
+                Module.setValue(pauseTargetBufferPtr + (index * 4), target, 'i32');
+              });
+
+            const pausePromise = new Promise(function(resolve, reject) {
+                Module.netplay.pausePromiseResolve = resolve;
+                Module.netplay.pausePromiseReject = reject;
+              });
+
+            netplayPause(pauseTargetBufferPtr);
+
+            Module._free(pauseTargetBufferPtr);
+            
+            return pausePromise;
+          } else {
+            const pauseEmulator = Module.cwrap('pauseEmulator', null, null);
+            pauseEmulator();
+            return Promise.resolve(null);
+          }
+        };
+
+        const resume = function() {
+          const netplayEnabled = Module.netplayConfig && Module.netplayConfig.player !== 0;
+          
+          if (netplayEnabled) {
+            const netplayResume = Module.cwrap('netplay_request_resume', null);
+            netplayResume();
+          } else {
+            const resumeEmulator = Module.cwrap('resumeEmulator', null, null);
+            resumeEmulator();
+          }
+        };
+
+        // Can't seem to use normal object syntax here
+        // (e.g. "emulatorControls = { start, pause, resume }" fails to build)
+        const emulatorControls = {};
+        emulatorControls.start = start;
+        emulatorControls.pause = pause;
+        emulatorControls.resume = resume;
+
+        Module.emulatorControls = emulatorControls;
+        
+        return 0;
+      });
+}
+
+int EMSCRIPTEN_KEEPALIVE start(int argc, char *argv[]) {
+    // On emscripten we have to prepare some things asynchronously before we can start the emulator
     int emuMode = EM_ASM_INT({ return Module.coreConfig.emuMode });
     l_Player = EM_ASM_INT({ return Module.netplayConfig.player });
 
@@ -1156,6 +1219,17 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+void EMSCRIPTEN_KEEPALIVE pauseEmulator() {
+  if ((*CoreDoCommand)(M64CMD_PAUSE, 0, NULL) == M64ERR_SUCCESS) {
+    printf("Successfully paused emulator!");
+  }
+}
+
+void EMSCRIPTEN_KEEPALIVE resumeEmulator() {
+  if ((*CoreDoCommand)(M64CMD_RESUME, 0, NULL) == M64ERR_SUCCESS) {
+    printf("Successfully resumed emulator!");
+  }
+}
 
 int EMSCRIPTEN_KEEPALIVE startEmulator(int argc)
 {
@@ -1200,12 +1274,15 @@ int EMSCRIPTEN_KEEPALIVE startEmulator(int argc)
           printf("Started netplay successfully\n");
         }
 
-        int regId = rand();
+        // Any value not between 0-4 (inclusive) indicates we wish to spectate
+        if (l_Player > 0 && l_Player <= 4) {
+          int regId = rand();
         
-        if ((*CoreDoCommand)(M64CMD_NETPLAY_CONTROL_PLAYER, l_Player, &regId) != M64ERR_SUCCESS) {
-          DebugMessage(M64MSG_ERROR, "failed to set netplay player control");
-        } else {
-          printf("Set player control successfully for %d\n", l_Player);
+          if ((*CoreDoCommand)(M64CMD_NETPLAY_CONTROL_PLAYER, l_Player, &regId) != M64ERR_SUCCESS) {
+            DebugMessage(M64MSG_ERROR, "failed to set netplay player control");
+          } else {
+            printf("Set player control successfully for %d\n", l_Player);
+          }
         }
       
       } else {
