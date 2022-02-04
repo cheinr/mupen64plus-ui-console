@@ -29,7 +29,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #include <SDL.h>
 #include <SDL_main.h>
@@ -986,8 +985,6 @@ int main(int argc, char *argv[])
     printf("|_|  |_|\\__,_| .__/ \\___|_| |_|\\___/   |_| |_|   |_|\\__,_|___/  \n");
     printf("             |_|         https://mupen64plus.org/               \n");
     printf("%s Version %i.%i.%i\n\n", CONSOLE_UI_NAME, VERSION_PRINTF_SPLIT(CONSOLE_UI_VERSION));
-
-    srand(time(NULL));
     
     /* bootstrap some special parameters from the command line */
     if (ParseCommandLineInitial(argc, (const char **) argv) != 0)
@@ -1276,7 +1273,7 @@ int EMSCRIPTEN_KEEPALIVE startEmulator(int argc)
 
         // Any value not between 0-4 (inclusive) indicates we wish to spectate
         if (l_Player > 0 && l_Player <= 4) {
-          int regId = rand();
+          int regId = EM_ASM_INT({ return Module.netplayConfig.registrationId; });
         
           if ((*CoreDoCommand)(M64CMD_NETPLAY_CONTROL_PLAYER, l_Player, &regId) != M64ERR_SUCCESS) {
             DebugMessage(M64MSG_ERROR, "failed to set netplay player control");
