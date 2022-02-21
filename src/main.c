@@ -1041,15 +1041,21 @@ int main(int argc, char *argv[])
     EM_ASM_INT({
 
         const start = function() {
-          const doStart = Module.cwrap('start', 'number', ['number']);
-          doStart(0);
+
+          const doStartPromise = Module.cwrap('start', 'number', ['number'], { async: true });
+
+          if (Module.asyncAction) {
+            Module.asyncAction.then(() => doStartPromise(0));
+          } else {
+            Module.asyncAction = doStartPromise(0);
+          }
         };
         
         const pause = function(pauseTargets) {
           const netplayEnabled = Module.netplayConfig && Module.netplayConfig.player !== 0;
 
           if (netplayEnabled) {
-            const netplayPause = Module.cwrap('netplay_request_pause', null, ['number']);
+            const netplayPause = Module.cwrap('netplay_request_pause', null, ['number'], { async: true });
 
             const pauseTargetBufferPtr = Module._malloc(4*4); // 4 32bit numbers
 
@@ -1062,15 +1068,27 @@ int main(int argc, char *argv[])
                 Module.netplay.pausePromiseReject = reject;
               });
 
-            netplayPause(pauseTargetBufferPtr);
-
-            Module._free(pauseTargetBufferPtr);
-            
-            return pausePromise;
+            if (Module.asyncAction) {
+              return Module.asyncAction.then(() => netplayPause(0)).then(() => {
+                Module._free(pauseTargetBufferPtr);
+              });
+            } else {
+              const actionPromise = netplayPause(0).then(() => {
+                Module._free(pauseTargetBufferPtr);
+              });
+              Module.asyncAction = actionPromise;
+              return actionPromise;
+            }
           } else {
-            const pauseEmulator = Module.cwrap('pauseEmulator', null, null);
-            pauseEmulator();
-            return Promise.resolve(null);
+            const pauseEmulator = Module.cwrap('pauseEmulator', null, null, { async: true });
+
+            if (Module.asyncAction) {
+              return Module.asyncAction.then(() => pauseEmulator());
+            } else {
+              const asyncAction = pauseEmulator();
+              Module.asyncAction = asyncAction;
+              return asyncAction;
+            }
           }
         };
 
@@ -1078,11 +1096,21 @@ int main(int argc, char *argv[])
           const netplayEnabled = Module.netplayConfig && Module.netplayConfig.player !== 0;
           
           if (netplayEnabled) {
-            const netplayResume = Module.cwrap('netplay_request_resume', null);
-            netplayResume();
+            const netplayResume = Module.cwrap('netplay_request_resume', null, null, { async: true });
+
+            if (Module.asyncAction) {
+              Module.asyncAction.then(() => netplayResume());
+            } else {
+              Module.asyncAction = netplayResume();
+            }
+
           } else {
-            const resumeEmulator = Module.cwrap('resumeEmulator', null, null);
-            resumeEmulator();
+            const resumeEmulator = Module.cwrap('resumeEmulator', null, null, { async: true });
+            if (Module.asyncAction) {
+              Module.asyncAction.then(() => resumeEmulator());
+            } else {
+              Module.asyncAction = resumeEmulator();
+            }
           }
         };
 
