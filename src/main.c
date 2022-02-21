@@ -1069,13 +1069,19 @@ int main(int argc, char *argv[])
               });
 
             if (Module.asyncAction) {
-              return Module.asyncAction.then(() => netplayPause(0)).then(() => {
-                Module._free(pauseTargetBufferPtr);
-              });
+              return Module.asyncAction.then(() => netplayPause(pauseTargetBufferPtr))
+                .then(() => {
+                    Module._free(pauseTargetBufferPtr);
+                }).then(() => {
+                    return pausePromise;
+                });
             } else {
-              const actionPromise = netplayPause(0).then(() => {
-                Module._free(pauseTargetBufferPtr);
-              });
+              const actionPromise = netplayPause(pauseTargetBufferPtr)
+                .then(() => {
+                    Module._free(pauseTargetBufferPtr);
+                  }).then(() => {
+                    return pausePromise;
+                  });
               Module.asyncAction = actionPromise;
               return actionPromise;
             }
