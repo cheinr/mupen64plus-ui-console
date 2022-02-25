@@ -1063,25 +1063,33 @@ int main(int argc, char *argv[])
                 Module.setValue(pauseTargetBufferPtr + (index * 4), target, 'i32');
               });
 
-            const pausePromise = new Promise(function(resolve, reject) {
-                Module.netplay.pausePromiseResolve = resolve;
-                Module.netplay.pausePromiseReject = reject;
-              });
-
             if (Module.asyncAction) {
-              return Module.asyncAction.then(() => netplayPause(pauseTargetBufferPtr))
-                .then(() => {
-                    Module._free(pauseTargetBufferPtr);
-                }).then(() => {
-                    return pausePromise;
+              return Module.asyncAction.then(() => {
+                  const pausePromise = new Promise(function(resolve, reject) {
+                      Module.netplay.pausePromiseResolve = resolve;
+                      Module.netplay.pausePromiseReject = reject;
+                    });
+
+                  return netplayPause(pauseTargetBufferPtr)
+                    .then(() => {
+                        Module._free(pauseTargetBufferPtr);
+                      })
+                    .then(() => pausePromise);
                 });
             } else {
+              const pausePromise = new Promise(function(resolve, reject) {
+                  Module.netplay.pausePromiseResolve = resolve;
+                  Module.netplay.pausePromiseReject = reject;
+                });
+
               const actionPromise = netplayPause(pauseTargetBufferPtr)
                 .then(() => {
                     Module._free(pauseTargetBufferPtr);
                   }).then(() => {
-                    return pausePromise;
-                  });
+                      return pausePromise;
+                    }).then((counts) => {
+                        return counts;
+                      });
               Module.asyncAction = actionPromise;
               return actionPromise;
             }
