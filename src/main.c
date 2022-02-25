@@ -1140,13 +1140,13 @@ int EMSCRIPTEN_KEEPALIVE start(int argc, char *argv[]) {
 
     (*ConfigSetParameter)(l_ConfigCore, "R4300Emulator", M64TYPE_INT, &emuMode);
     
-      // initiate async call to mount IDBFS persistent filesystem to /save
-      // and when that completes start up the core with an async call to
-      // "CoreDoCommand"
-      EM_ASM_INT({
-
+    // initiate async call to mount IDBFS persistent filesystem to /save
+    // and when that completes start up the core with an async call to
+    // "CoreDoCommand"
+    EM_ASM_INT({
+        
         const romLocation = UTF8ToString($0);
-
+        
         // first sync the IDBFS from persistent storage (game saves from previous browser sessions).
         // c++ file operations can access it easily.
         console.log('Will load rom: ', romLocation);
@@ -1242,10 +1242,13 @@ int EMSCRIPTEN_KEEPALIVE start(int argc, char *argv[]) {
           .catch(function(e){console.error('Error during startup promise chain: ', e);});
 
         return 0;
-        }, l_ROMFilepath);
+      }, l_ROMFilepath);
 
-      //int dummy_arg = 0;
-      //emscripten_set_main_loop_arg(dummy_main, &dummy_arg, 0, 1);
+    // simulate_infinite_loop=1 keeps the stack from unwinding, which would
+    // result in stack variables from being cleaned up before the emulator
+    // is started.
+    int dummy_arg = 0;
+    emscripten_set_main_loop_arg(dummy_main, &dummy_arg, 0, 1);
       
     return 0;
 }
