@@ -1128,12 +1128,24 @@ int main(int argc, char *argv[])
           }
         };
 
+        const forceDumpSaveFiles = function() {
+          const doForceDumpSaveFiles = Module.cwrap('dump_save_files', null, null, { async: true });
+          if (Module.asyncAction) {
+            return Module.asyncAction.then(() => doForceDumpSaveFiles());
+          } else {
+            const asyncAction = doForceDumpSaveFiles();
+            Module.asyncAction = asyncAction;
+            return asyncAction;
+          }
+        };
+
         // Can't seem to use normal object syntax here
         // (e.g. "emulatorControls = { start, pause, resume }" fails to build)
         const emulatorControls = {};
         emulatorControls.start = start;
         emulatorControls.pause = pause;
         emulatorControls.resume = resume;
+        emulatorControls.forceDumpSaveFiles = forceDumpSaveFiles;
 
         Module.emulatorControls = emulatorControls;
         
