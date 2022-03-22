@@ -1042,13 +1042,13 @@ int main(int argc, char *argv[])
 
         const start = function() {
 
-          const doStartPromise = Module.cwrap('start', 'number', ['number'], { async: true });
+          const doStart = Module.cwrap('start', 'number', ['number']);
+          doStart();
+        };
 
-          if (Module.asyncAction) {
-            Module.asyncAction.then(() => doStartPromise(0));
-          } else {
-            Module.asyncAction = doStartPromise(0);
-          }
+        const stop = function() {
+          const doStop = Module.cwrap('stopEmulator', null, null);
+          doStop();
         };
         
         const pause = function(pauseTargets) {
@@ -1143,6 +1143,7 @@ int main(int argc, char *argv[])
         // (e.g. "emulatorControls = { start, pause, resume }" fails to build)
         const emulatorControls = {};
         emulatorControls.start = start;
+        emulatorControls.stop = stop;
         emulatorControls.pause = pause;
         emulatorControls.resume = resume;
         emulatorControls.forceDumpSaveFiles = forceDumpSaveFiles;
@@ -1503,7 +1504,18 @@ int EMSCRIPTEN_KEEPALIVE startEmulator(int argc)
     /* run the game */
     (*CoreDoCommand)(M64CMD_EXECUTE, 0, NULL);
 
-#if !(EMSCRIPTEN)
+#if EMSCRIPTEN
+}
+
+int EMSCRIPTEN_KEEPALIVE stopEmulator(int argc)
+{
+
+  int i;
+  (*CoreDoCommand)(M64CMD_STOP, 0, NULL);
+
+  emscripten_cancel_main_loop();
+#endif
+
     /* detach plugins from core and unload them */
     for (i = 0; i < 4; i++)
         (*CoreDetachPlugin)(g_PluginMap[i].type);
@@ -1523,6 +1535,6 @@ int EMSCRIPTEN_KEEPALIVE startEmulator(int argc)
     /* free allocated memory */
     if (l_TestShotList != NULL)
         free(l_TestShotList);
-#endif //EMSCRIPTEN
+
     return 0;
 }
