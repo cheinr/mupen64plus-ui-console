@@ -1042,8 +1042,22 @@ int main(int argc, char *argv[])
 
         const start = function() {
 
-          const doStart = Module.cwrap('start', 'number', ['number']);
-          doStart();
+          const doStart = Module.cwrap('start', 'number', ['number'], { async: true });
+
+          const doStartPromise = new Promise(function(resolve) {
+              doStart(0).then(function() { resolve() })
+                .catch(function(err) {
+                    if (err === 'unwind') {
+                      resolve();
+                    } else {
+                      console.error(err);
+                      reject(err);
+                    }
+                });
+          });
+
+          Module.asyncAction = doStartPromise;
+          return doStartPromise;
         };
 
         const stop = function() {
@@ -1154,6 +1168,89 @@ int main(int argc, char *argv[])
       });
 }
 
+EM_JS(void, initIDBFS, (), {
+    return Asyncify.handleAsync(function() {
+        return new Promise (function(resolve, reject) {
+
+            console.log('Initiating async IDBFS read from peristent storage.');
+
+            FS.syncfs(true, function(err) {
+                console.log('sync complete!');
+                if (err) {
+                  reject(err);
+                }
+                resolve(0);
+              });
+          });
+      });
+  });
+
+EM_JS(void, writeROM, (const char* romLocationStr), {
+    return Asyncify.handleAsync(function() {
+        return new Promise(function (resolve, reject) {
+
+            const romLocation = UTF8ToString(romLocationStr);
+            const path = romLocation.substr(0, romLocation.lastIndexOf('/'));
+            const filename = romLocation.substr(romLocation.lastIndexOf('/') + 1);
+
+            FS.writeFile(romLocation, new Uint8Array(Module.romData));
+
+            var contents = FS.readFile(romLocation, { encoding: 'binary' });
+
+            console.log('Written file contents: %o', contents);
+
+            // no longer needed
+            delete Module.romData;
+
+            resolve();
+          });
+      });
+  });
+
+EM_JS(void, copyInputAutoConfig, (), {
+    return Asyncify.handleAsync(function() {
+        return new Promise(function (resolve, reject) {
+
+            const fileExists = FS.analyzePath('/mupen64plus/data/InputAutoCfg.ini', false).exists;
+
+            if (!fileExists) {
+
+              const contents = FS.readFile('/data/InputAutoCfg.ini', { encoding: 'utf8' });
+
+              const dataDirExists = FS.analyzePath('/mupen64plus/data', false).exists;
+
+              if (!dataDirExists) {
+                FS.mkdir('/mupen64plus/data');
+              }
+
+              FS.writeFile('/mupen64plus/data/InputAutoCfg.ini', contents);
+
+              FS.syncfs(false, function(err){
+                  if (err) {
+                    reject(err);
+                  }
+                  resolve();
+                });
+            } else {
+              resolve();
+            }
+          });
+      });
+  });
+
+EM_JS(void, startCore, (), {
+    return Asyncify.handleAsync(function() {
+        return new Promise (function (resolve, reject) {
+            console.log('Starting game core');
+            var doStartCore = Module.cwrap('startEmulator', 'number', ['number'], { async: true });
+            doStartCore(0);
+            console.log('Finished starting game core');
+            resolve(0);
+          });
+      });
+  });
+
+int startEmulator(int argc);
 int EMSCRIPTEN_KEEPALIVE start(int argc, char *argv[]) {
     // On emscripten we have to prepare some things asynchronously before we can start the emulator
     int emuMode = EM_ASM_INT({ return Module.coreConfig.emuMode });
@@ -1161,116 +1258,19 @@ int EMSCRIPTEN_KEEPALIVE start(int argc, char *argv[]) {
 
     (*ConfigSetParameter)(l_ConfigCore, "R4300Emulator", M64TYPE_INT, &emuMode);
     
-    // initiate async call to mount IDBFS persistent filesystem to /save
-    // and when that completes start up the core with an async call to
-    // "CoreDoCommand"
     EM_ASM_INT({
-        
-        const romLocation = UTF8ToString($0);
-        
-        // first sync the IDBFS from persistent storage (game saves from previous browser sessions).
-        // c++ file operations can access it easily.
-        console.log('Will load rom: ', romLocation);
         
         FS.mkdir('/mupen64plus');
         FS.mount(IDBFS, {}, '/mupen64plus');
 
-        const initIDBFS = function() {
-          return new Promise (
-              function(resolve, reject) {
-                console.log('Initiating async IDBFS read from peristent storage.');
-
-                FS.syncfs(true, function(err) {
-                    console.log('sync complete!');
-                    if (err) {
-                      reject(err);
-                    }
-                    resolve(0);
-                  });
-              }
-          );
-        };
-
-        const writeROM = function() {
-          return new Promise( 
-            function (resolve, reject) {
-
-              const path = romLocation.substr(0, romLocation.lastIndexOf('/'));
-              const filename = romLocation.substr(romLocation.lastIndexOf('/') + 1);
-
-                                                       
-              FS.writeFile(romLocation, new Uint8Array(Module.romData));
-
-              var contents = FS.readFile(romLocation, { encoding: 'binary' });
-
-              console.log('Written file contents: %o', contents);
-
-              // no longer needed
-              delete Module.romData;
-
-              resolve();
-            }
-          );
-        };
-
-        const copyInputAutoConfig = function() {
-          return new Promise( 
-            function (resolve, reject) {
-
-              const fileExists = FS.analyzePath('/mupen64plus/data/InputAutoCfg.ini', false).exists;
-
-              if (!fileExists) {
-
-                const contents = FS.readFile('/data/InputAutoCfg.ini', { encoding: 'utf8' });
-
-                const dataDirExists = FS.analyzePath('/mupen64plus/data', false).exists;
-
-                if (!dataDirExists) {
-                  FS.mkdir('/mupen64plus/data');
-                }
-
-                FS.writeFile('/mupen64plus/data/InputAutoCfg.ini', contents);
-
-                FS.syncfs(false, function(err){
-                    if (err) {
-                      reject(err);
-                    }
-                    resolve();
-                  });
-              } else {
-                resolve();
-              }
-            }
-          );
-        };
-
-        var startCore = function() {
-          return new Promise (
-              function (resolve, reject) {
-                console.log('Starting game core');
-                var doStartCore = Module.cwrap('startEmulator', 'number', ['number'], { async: true });
-                doStartCore(0);
-                console.log('Finished starting game core');
-                resolve(0);
-              }
-            );
-        };
-
-        initIDBFS()
-          .then(copyInputAutoConfig)
-          .then(writeROM)
-          .then(startCore)
-          .catch(function(e){console.error('Error during startup promise chain: ', e);});
-
         return 0;
       }, l_ROMFilepath);
 
-    // simulate_infinite_loop=1 keeps the stack from unwinding, which would
-    // result in stack variables from being cleaned up before the emulator
-    // is started.
-    int dummy_arg = 0;
-    emscripten_set_main_loop_arg(dummy_main, &dummy_arg, 0, 1);
-      
+    initIDBFS();
+    copyInputAutoConfig();
+    writeROM(l_ROMFilepath);
+    startEmulator(0);
+    
     return 0;
 }
 
