@@ -1044,7 +1044,7 @@ int main(int argc, char *argv[])
 
           const doStart = Module.cwrap('start', 'number', ['number'], { async: true });
 
-          const doStartPromise = new Promise(function(resolve) {
+          const doStartPromise = new Promise(function(resolve, reject) {
               doStart(0).then(function() { resolve() })
                 .catch(function(err) {
                     if (err === 'unwind') {
