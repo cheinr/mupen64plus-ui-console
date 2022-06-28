@@ -57,6 +57,8 @@ m64p_error SetupGfx()
   const char *PluginName = NULL;
   PluginGetVersionVideo(&PluginType, &PluginVersion, NULL, &PluginName, NULL);
 
+  rval = PluginStartupVideo(CoreHandle, g_PluginMap[0].name, DebugCallback);
+
   g_PluginMap[0].handle = (m64p_dynlib_handle)PluginType;
   g_PluginMap[0].libname = PluginName;
   g_PluginMap[0].libversion = PluginVersion;
