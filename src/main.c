@@ -1045,6 +1045,7 @@ int main(int argc, char *argv[])
           const doStart = Module.cwrap('start', 'number', ['number'], { async: true });
 
           const doStartPromise = new Promise(function(resolve, reject) {
+
               doStart(0).then(function() { resolve() })
                 .catch(function(err) {
                     if (err === 'unwind') {
@@ -1252,12 +1253,19 @@ EM_JS(void, startCore, (), {
 
 int startEmulator(int argc);
 int EMSCRIPTEN_KEEPALIVE start(int argc, char *argv[]) {
+
+    int width = EM_ASM_INT({ return Module.canvas.width; });
+    int height = EM_ASM_INT({ return Module.canvas.height; });
+
+    (*ConfigSetParameter)(l_ConfigVideo, "ScreenWidth", M64TYPE_INT, &width);
+    (*ConfigSetParameter)(l_ConfigVideo, "ScreenHeight", M64TYPE_INT, &height);
+
     // On emscripten we have to prepare some things asynchronously before we can start the emulator
     int emuMode = EM_ASM_INT({ return Module.coreConfig.emuMode });
     l_Player = EM_ASM_INT({ return Module.netplayConfig.player });
 
     (*ConfigSetParameter)(l_ConfigCore, "R4300Emulator", M64TYPE_INT, &emuMode);
-    
+
     EM_ASM_INT({
         
         FS.mkdir('/mupen64plus');
