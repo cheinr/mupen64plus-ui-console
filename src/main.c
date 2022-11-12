@@ -940,7 +940,7 @@ static m64p_media_loader l_media_loader =
     NULL,
     media_loader_get_gb_cart_rom,
     media_loader_get_gb_cart_ram,
-    media_loader_get_dd_rom,
+    (void (*)(void *, uint8_t)) media_loader_get_dd_rom,
     media_loader_get_dd_disk
 };
 
@@ -1039,6 +1039,14 @@ int main(int argc, char *argv[])
 
 #if EMSCRIPTEN
     EM_ASM_INT({
+
+        // https://stackoverflow.com/questions/8916620/disable-arrow-key-scrolling-in-users-browser
+        // This didn't seem to be a problem for emscripten <= 3.1.8
+        window.addEventListener("keydown", function(e) {
+            if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1) {
+              e.preventDefault();
+            }
+        });
 
         const start = function() {
 
@@ -1329,7 +1337,7 @@ int EMSCRIPTEN_KEEPALIVE startEmulator(int argc)
       char* serverHostName = NULL;
       uint32_t version;
 
-      if ((*CoreDoCommand)(M64CMD_NETPLAY_GET_VERSION, 0x010000, &version) == M64ERR_SUCCESS) {
+      if ((*CoreDoCommand)(M64CMD_NETPLAY_GET_VERSION, 0x010001, &version) == M64ERR_SUCCESS) {
     
         if ((*CoreDoCommand)(M64CMD_NETPLAY_INIT, 0, serverHostName) != M64ERR_SUCCESS) {
           DebugMessage(M64MSG_ERROR, "failed to start netplay");
