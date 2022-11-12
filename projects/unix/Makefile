@@ -67,11 +67,14 @@ ifneq ("$(filter pentium i%86,$(HOST_CPU))","")
   ARCH_DETECTED := 32BITS
 endif
 
+SRCDIR = ../../src
+OBJDIR = _obj$(POSTFIX
+
 # base CFLAGS, LDLIBS, and LDFLAGS
 OPTFLAGS ?= -O3 -flto
 WARNFLAGS ?= -Wall
 
-CFLAGS += $(OPTFLAGS) $(WARNFLAGS) -ffast-math -fno-strict-aliasing -I../../src
+CFLAGS += $(OPTFLAGS) $(WARNFLAGS) -ffast-math -fno-strict-aliasing -I$(SRCDIR)
 ifeq ($(OS), MINGW)
   CFLAGS += -lpthread
   LDLIBS += -lpthread
@@ -140,8 +143,20 @@ ifeq ($(ARCH_DETECTED), 64BITS_32)
   ifeq ($(OS), FREEBSD)
     $(error Do not use the BITS=32 option with FreeBSD, use -m32 and -m elf_i386)
   endif
-  CFLAGS += -m32
-  LDFLAGS += -Wl,-m,elf_i386
+  ifneq ($(OS), OSX)
+    ifeq ($(OS), MINGW)
+      LDFLAGS += -Wl,-m,i386pe
+    else
+      CFLAGS += -m32
+      LDFLAGS += -Wl,-m,elf_i386
+    endif
+  endif
+endif
+
+ifeq ($(ARCH_DETECTED), 64BITS)
+  ifeq ($(OS), MINGW)
+    LDFLAGS += -Wl,-m,i386pep
+  endif
 endif
 
 # set mupen64plus core API header path
@@ -183,27 +198,26 @@ MKDIR ?= mkdir -p
 COMPILE.c = $(Q_CC)$(CC) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c
 LINK.o = $(Q_LD)$(CC) $(CFLAGS) $(LDFLAGS) $(TARGET_ARCH)
 
-# set special flags for given Makefile parameters
-# note: COREDIR _must_ end in a slash if you want it to work; not necessary for the others
-ifneq ($(PLUGINDIR),)
-  CFLAGS += '-DPLUGINDIR="$(PLUGINDIR)"'
-endif
-ifneq ($(COREDIR),)
-  CFLAGS += '-DCOREDIR="$(COREDIR)"'
-endif
-ifneq ($(SHAREDIR),)
-  CFLAGS += '-DSHAREDIR="$(SHAREDIR)"'
-endif
-ifeq ($(DEBUG),1)
-  CFLAGS += -g
-  INSTALL_STRIP_FLAG ?=
-else
-  CFLAGS += -fno-PIE
+ifndef PIE
   ifeq ($(CC),$(CROSS_COMPILE)gcc)
     # check if PIE is the default for the compiler
     PIE_DEFAULT = $(shell $(CC) -v 2>&1 | grep enable-default-pie)
-    ifneq ($(PIE_DEFAULT),)
+    ifeq ($(PIE_DEFAULT),)
+      PIE = 1
+    endif
+  endif
+endif
+
+ifdef PIE
+  ifeq ($(PIE), 1)
+    CFLAGS += -fPIE
+    LDFLAGS += -pie
+  else
+    ifeq ($(PIE), 0)
+      CFLAGS += -fno-PIE
       LDFLAGS += -no-pie
+    else
+      $(error Invalid PIE value.)
     endif
   endif
 endif
@@ -335,13 +349,13 @@ install: $(TARGET)
 	$(INSTALL) -d "$(DESTDIR)$(BINDIR)"
 	$(INSTALL) -m 0755 $(INSTALL_STRIP_FLAG) $(TARGET) "$(DESTDIR)$(BINDIR)"
 	$(INSTALL) -d "$(DESTDIR)$(MANDIR)/man6"
-	$(INSTALL) -m 0644 ../../doc/mupen64plus.6 "$(DESTDIR)$(MANDIR)/man6"
+	$(INSTALL) -m 0644 $(SRCDIR)/../doc/mupen64plus.6 "$(DESTDIR)$(MANDIR)/man6"
 	$(INSTALL) -d "$(DESTDIR)$(APPSDIR)"
-	$(INSTALL) -m 0644 ../../data/mupen64plus.desktop "$(DESTDIR)$(APPSDIR)"
+	$(INSTALL) -m 0644 $(SRCDIR)/../data/mupen64plus.desktop "$(DESTDIR)$(APPSDIR)"
 	$(INSTALL) -d "$(DESTDIR)$(ICONSDIR)/48x48/apps"
-	$(INSTALL) -m 0644 ../../data/icons/48x48/apps/mupen64plus.png "$(DESTDIR)$(ICONSDIR)/48x48/apps"
+	$(INSTALL) -m 0644 $(SRCDIR)/../data/icons/48x48/apps/mupen64plus.png "$(DESTDIR)$(ICONSDIR)/48x48/apps"
 	$(INSTALL) -d "$(DESTDIR)$(ICONSDIR)/scalable/apps"
-	$(INSTALL) -m 0644 ../../data/icons/scalable/apps/mupen64plus.svg "$(DESTDIR)$(ICONSDIR)/scalable/apps"
+	$(INSTALL) -m 0644 $(SRCDIR)/../data/icons/scalable/apps/mupen64plus.svg "$(DESTDIR)$(ICONSDIR)/scalable/apps"
 
 
 uninstall:
