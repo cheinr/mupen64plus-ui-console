@@ -94,6 +94,11 @@ m64p_error SetupRSP()
 
 m64p_error SetupAudio()
 {
+
+#if BENCHMARK_MODE
+  printf("Using dummy audio plugin as BENCHMARK_MODE is enabled\n");
+  return M64ERR_SUCCESS;
+#endif
   m64p_error rval;
   m64p_plugin_type PluginType;
   int PluginVersion = 0;

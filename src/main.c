@@ -1038,6 +1038,14 @@ int main(int argc, char *argv[])
 
 
 #if EMSCRIPTEN
+
+#if BENCHMARK_MODE
+    printf("Disabling speed limiter as BENCHMARK_MODE is enabled!\n");
+    int EnableSpeedLimit = 0;
+    if ((*CoreDoCommand)(M64CMD_CORE_STATE_SET, M64CORE_SPEED_LIMITER, &EnableSpeedLimit) != M64ERR_SUCCESS)
+      DebugMessage(M64MSG_ERROR, "core gave error while setting --nospeedlimit option");
+#endif
+
     EM_ASM_INT({
 
         // https://stackoverflow.com/questions/8916620/disable-arrow-key-scrolling-in-users-browser
