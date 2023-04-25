@@ -1506,10 +1506,12 @@ int EMSCRIPTEN_KEEPALIVE startEmulator(int argc)
         int bEnableDebugger = 1;
         (*ConfigSetParameter)(l_ConfigCore, "EnableDebugger", M64TYPE_BOOL, &bEnableDebugger);
         /* Fork the debugger input thread. */
+#if (!EMSCRIPTEN)
 #if SDL_VERSION_ATLEAST(2,0,0)
         SDL_CreateThread(debugger_loop, "DebugLoop", NULL);
 #else
         SDL_CreateThread(debugger_loop, NULL);
+#endif
 #endif
     }
     else
