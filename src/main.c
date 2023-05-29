@@ -1277,7 +1277,13 @@ int EMSCRIPTEN_KEEPALIVE start(int argc, char *argv[]) {
     (*ConfigSetParameter)(l_ConfigVideo, "ScreenHeight", M64TYPE_INT, &height);
 
     // On emscripten we have to prepare some things asynchronously before we can start the emulator
-    int emuMode = EM_ASM_INT({ return Module.coreConfig.emuMode });
+    int emuMode = EM_ASM_INT({
+        const emuMode = Module.coreConfig.emuMode;
+        if (emuMode == 2 && Module.netplayConfig.player !== 0) {
+          throw "Invalid parameters! Cannnot use dynarec when netplay is enabled!";
+        }
+        return emuMode;
+    });
     l_Player = EM_ASM_INT({ return Module.netplayConfig.player });
 
     (*ConfigSetParameter)(l_ConfigCore, "R4300Emulator", M64TYPE_INT, &emuMode);
