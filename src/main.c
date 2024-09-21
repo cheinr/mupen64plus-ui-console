@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include <SDL.h>
 #include <SDL_main.h>
@@ -61,6 +62,8 @@
 
 #if EMSCRIPTEN
 #include "emscripten.h"
+#include "emscripten/proxying.h"
+#include "emscripten/threading.h"
 #endif
 
 /* Version number for UI-Console config section parameters */
@@ -962,7 +965,8 @@ static m64p_media_loader l_media_loader =
 #if EMSCRIPTEN
 
 void dummy_main(int* dummy_arg){
-
+  //printf("dummy_main\n");
+  emscripten_async_call((em_arg_callback_func) dummy_main, 0, 100);
 };
 
 #endif // EMSCRIPTEN
@@ -974,87 +978,20 @@ void dummy_main(int* dummy_arg){
  */
 __attribute__ ((visibility("default")))
 #endif
+
+int EMSCRIPTEN_KEEPALIVE start(int argc, char * argv[]);
 int main(int argc, char *argv[])
 {
-    int i;
-
-    printf(" __  __                         __   _  _   ____  _             \n");
-    printf("|  \\/  |_   _ _ __   ___ _ __  / /_ | || | |  _ \\| |_   _ ___ \n");
-    printf("| |\\/| | | | | '_ \\ / _ \\ '_ \\| '_ \\| || |_| |_) | | | | / __|  \n");
-    printf("| |  | | |_| | |_) |  __/ | | | (_) |__   _|  __/| | |_| \\__ \\  \n");
-    printf("|_|  |_|\\__,_| .__/ \\___|_| |_|\\___/   |_| |_|   |_|\\__,_|___/  \n");
-    printf("             |_|         https://mupen64plus.org/               \n");
-    printf("%s Version %i.%i.%i\n\n", CONSOLE_UI_NAME, VERSION_PRINTF_SPLIT(CONSOLE_UI_VERSION));
-    
-    /* bootstrap some special parameters from the command line */
-    if (ParseCommandLineInitial(argc, (const char **) argv) != 0)
-        return 1;
-
-    printf("Attaching core lib\n");
-    /* load the Mupen64Plus core library */
-    if (AttachCoreLib(l_CoreLibPath) != M64ERR_SUCCESS)
-        return 2;
-
-    printf("Done attaching core lib\n");
-
-    /* start the Mupen64Plus core library, load the configuration file */
-
-    m64p_error rval = (*CoreStartup)(CORE_API_VERSION, l_ConfigDirPath, l_DataDirPath, "Core", DebugCallback, NULL, CALLBACK_FUNC);
-    if (rval != M64ERR_SUCCESS)
-    {
-        DebugMessage(M64MSG_ERROR, "couldn't start Mupen64Plus core library.");
-        DetachCoreLib();
-        return 3;
-    }
-
-#ifdef VIDEXT_HEADER
-    rval = CoreOverrideVidExt(&vidExtFunctions);
-    if (rval != M64ERR_SUCCESS)
-    {
-        DebugMessage(M64MSG_ERROR, "couldn't start VidExt library.");
-        DetachCoreLib();
-        return 14;
-    }
-#endif
-
-    /* Open configuration sections */
-    rval = OpenConfigurationHandles();
-    if (rval != M64ERR_SUCCESS)
-    {
-        (*CoreShutdown)();
-        DetachCoreLib();
-        return 4;
-    }
-
-    /* parse non-plugin command-line options */
-    rval = ParseCommandLineMain(argc, (const char **) argv);
-    if (rval != M64ERR_SUCCESS)
-    {
-        (*CoreShutdown)();
-        DetachCoreLib();
-        return 5;
-    }
-
-
-
-#if EMSCRIPTEN
-
-#if BENCHMARK_MODE
-    printf("Disabling speed limiter as BENCHMARK_MODE is enabled!\n");
-    int EnableSpeedLimit = 0;
-    if ((*CoreDoCommand)(M64CMD_CORE_STATE_SET, M64CORE_SPEED_LIMITER, &EnableSpeedLimit) != M64ERR_SUCCESS)
-      DebugMessage(M64MSG_ERROR, "core gave error while setting --nospeedlimit option");
-#endif
 
     EM_ASM_INT({
 
         // https://stackoverflow.com/questions/8916620/disable-arrow-key-scrolling-in-users-browser
         // This didn't seem to be a problem for emscripten <= 3.1.8
-        window.addEventListener("keydown", function(e) {
-            if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1) {
-              e.preventDefault();
-            }
-        });
+        //window.addEventListener("keydown", function(e) {
+        //if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1) {
+        //e.preventDefault();
+        //}
+        //        });
 
         const start = function() {
 
@@ -1206,18 +1143,21 @@ EM_JS(void, writeROM, (const char* romLocationStr), {
     return Asyncify.handleAsync(function() {
         return new Promise(function (resolve, reject) {
 
-            const romLocation = UTF8ToString(romLocationStr);
+            const romLocation = Module.UTF8ToString(romLocationStr);
             const path = romLocation.substr(0, romLocation.lastIndexOf('/'));
             const filename = romLocation.substr(romLocation.lastIndexOf('/') + 1);
+            console.log("worker romData: %o", Module.romData);
 
             FS.writeFile(romLocation, new Uint8Array(Module.romData));
 
             var contents = FS.readFile(romLocation, { encoding: 'binary' });
 
-            console.log('Written file contents: %o', contents);
+            console.log('Written file contents at %s: %o', romLocation, contents);
 
             // no longer needed
-            delete Module.romData;
+            //delete Module.romData;
+
+            console.log('Written file contents at %s: %o', romLocation, contents);
 
             resolve();
           });
@@ -1267,9 +1207,205 @@ EM_JS(void, startCore, (), {
       });
   });
 
-int startEmulator(int argc);
-int EMSCRIPTEN_KEEPALIVE start(int argc, char *argv[]) {
 
+int canvasId;
+pthread_t thread;
+em_proxying_queue* pthread_queue;
+
+void *dummy_thread_main(void *arg) // runs in pthread
+{
+  // Do not quit the pthread when falling out of main, but lie dormant for async
+  // events to be processed in this pthread context.
+  emscripten_exit_with_live_runtime();
+}
+
+struct thread_main_args_struct {
+  int argc;
+  char **argv;
+  int* customModuleValuesJSONPtr;
+};
+
+int EMSCRIPTEN_KEEPALIVE thread_main(void* thread_main_args_struct);
+int EMSCRIPTEN_KEEPALIVE thread_main_wrapper(void* arguments);
+int start(int argc, char * argv[]) {
+
+  uint32_t customModuleValuesBufferPtr = EM_ASM_INT({
+
+      const customModuleValues = {};
+      customModuleValues.coreConfig = Module.coreConfig;
+
+      console.log("romData: %o", Module.romData);
+      
+      customModuleValues.serializedRomData = JSON.stringify(Array.from(new Uint8Array(Module.romData)));
+      customModuleValues.romConfigOptionOverrides = Module.romConfigOptionOverrides;
+      customModuleValues.netplayConfig = Module.netplayConfig;
+
+      const customModuleValuesJSON = JSON.stringify(customModuleValues);     
+      
+      return Module.stringToNewUTF8(customModuleValuesJSON);
+    });
+
+
+  
+  struct thread_main_args_struct args;
+  args.argc = argc;
+  args.argv = argv;
+  args.customModuleValuesJSONPtr = (int*) customModuleValuesBufferPtr;
+
+  // 1. Let's first create a Wasm Worker to do the rendering. It will start with
+  //    a dummy main function, since it needs to wait to receive the WebGPU
+  //    canvas via a postMessage.
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
+  pthread_create(&thread, &attr, (void*) thread_main_wrapper, (void *)&args);
+
+  
+
+  // 2. convert the HTML Canvas element to be renderable from a Worker
+  //    by transferring its control to an OffscreenCanvas:
+
+  //    This function must be given a custom ID number, that will be used to
+  //    identify that OffscreenCanvas element in C/C++ side code. If you want to
+  //    render to multiple Canvases from different Workers, you should devise
+  //    some kind of Canvas ID counter scheme here. We'll use a fixed ID 42.
+
+  //    After control has been transferred offscreen, this canvas element will
+  //    be permanently offscreen-controlled, there is no browser API to undo
+  //    this. (except to delete the DOM element and create a new one)
+  //  canvasId = 42;
+  //  canvas_transfer_control_to_offscreen("canvas", canvasId);
+  
+
+  // 3. Each OffscreenCanvas is owned by exactly one thread, so we must
+  //    postMessage() our newly created OffscreenCanvas to the Worker to pass
+  //    the ownership. Here we pass the ID of the OffscreenCanvas we created
+  //    above. After this line, our main thread cannot access this
+  //    OffscreenCanvas anymore.
+  //  offscreen_canvas_post_to_pthread(canvasId, thread);
+
+    // 4. Now the OffscreenCanvas is available for the Worker, so make it start
+  //    executing its main function to initialize WebGPU in the Worker and
+  //    start rendering.
+  //  pthread_queue = em_proxying_queue_create();
+  //  emscripten_proxy_async(pthread_queue, thread, thread_main, 0);
+
+  printf("exit_with_live_runtime\n");
+  emscripten_exit_with_live_runtime();
+  //emscripten_async_call((em_arg_callback_func) dummy_main, 0, 100);
+}
+
+int startEmulator(int argc);
+int EMSCRIPTEN_KEEPALIVE thread_main_wrapper(void* arguments) {
+  EM_ASM_INT({
+      const thread_main = Module.cwrap('thread_main', 'number', ['number'], { async: false });
+
+      try {
+        thread_main($0);
+      } catch(err) {
+        if (err !== 'unwind') {
+          throw err;                      
+        }
+      }
+      return 0;
+    }, arguments);
+}
+int EMSCRIPTEN_KEEPALIVE thread_main(void* arguments) {
+
+  struct thread_main_args_struct *args = (struct thread_main_args_struct *) arguments;
+  int argc = args->argc;
+  char **argv = args->argv;
+  int* customModuleValuesJSONPtr = args->customModuleValuesJSONPtr;
+
+  EM_ASM_INT({
+      const customModuleValuesJSONPtr = $0;
+      const customModuleValuesJSON = Module.UTF8ToString(customModuleValuesJSONPtr);
+      const customModuleValues = JSON.parse(customModuleValuesJSON);
+
+      console.log("Restoring custom module values in worker! CurrentModule=%o, customModuleValues=%o",
+                  Module,
+                  customModuleValues);
+      
+      Object.assign(Module, customModuleValues);
+
+      console.log("worker serializedRomData: %o", Module.serializedRomData);
+      Module.romData = new Uint8Array(JSON.parse(Module.serializedRomData));
+      console.log("worker romData0: %o", Module.romData);
+      Module.serializedRomData = null;
+
+      // TODO
+      //Module._free(customModuleValuesJSONPtr);
+    }, customModuleValuesJSONPtr);
+  
+
+    int i;
+
+    printf(" __  __                         __   _  _   ____  _             \n");
+    printf("|  \\/  |_   _ _ __   ___ _ __  / /_ | || | |  _ \\| |_   _ ___ \n");
+    printf("| |\\/| | | | | '_ \\ / _ \\ '_ \\| '_ \\| || |_| |_) | | | | / __|  \n");
+    printf("| |  | | |_| | |_) |  __/ | | | (_) |__   _|  __/| | |_| \\__ \\  \n");
+    printf("|_|  |_|\\__,_| .__/ \\___|_| |_|\\___/   |_| |_|   |_|\\__,_|___/  \n");
+    printf("             |_|         https://mupen64plus.org/               \n");
+    printf("%s Version %i.%i.%i\n\n", CONSOLE_UI_NAME, VERSION_PRINTF_SPLIT(CONSOLE_UI_VERSION));
+    
+    /* bootstrap some special parameters from the command line */
+    if (ParseCommandLineInitial(argc, (const char **) argv) != 0)
+        return 1;
+
+    printf("Attaching core lib\n");
+    /* load the Mupen64Plus core library */
+    if (AttachCoreLib(l_CoreLibPath) != M64ERR_SUCCESS)
+        return 2;
+
+    printf("Done attaching core lib\n");
+
+    /* start the Mupen64Plus core library, load the configuration file */
+
+    m64p_error rval = (*CoreStartup)(CORE_API_VERSION, l_ConfigDirPath, l_DataDirPath, "Core", DebugCallback, NULL, CALLBACK_FUNC);
+    if (rval != M64ERR_SUCCESS)
+    {
+        DebugMessage(M64MSG_ERROR, "couldn't start Mupen64Plus core library.");
+        DetachCoreLib();
+        return 3;
+    }
+
+#ifdef VIDEXT_HEADER
+    rval = CoreOverrideVidExt(&vidExtFunctions);
+    if (rval != M64ERR_SUCCESS)
+    {
+        DebugMessage(M64MSG_ERROR, "couldn't start VidExt library.");
+        DetachCoreLib();
+        return 14;
+    }
+#endif
+
+    /* Open configuration sections */
+    rval = OpenConfigurationHandles();
+    if (rval != M64ERR_SUCCESS)
+    {
+        (*CoreShutdown)();
+        DetachCoreLib();
+        return 4;
+    }
+
+    /* parse non-plugin command-line options */
+    rval = ParseCommandLineMain(argc, (const char **) argv);
+    if (rval != M64ERR_SUCCESS)
+    {
+        (*CoreShutdown)();
+        DetachCoreLib();
+        return 5;
+    }
+
+#if EMSCRIPTEN
+
+#if BENCHMARK_MODE
+    printf("Disabling speed limiter as BENCHMARK_MODE is enabled!\n");
+    int EnableSpeedLimit = 0;
+    if ((*CoreDoCommand)(M64CMD_CORE_STATE_SET, M64CORE_SPEED_LIMITER, &EnableSpeedLimit) != M64ERR_SUCCESS)
+      DebugMessage(M64MSG_ERROR, "core gave error while setting --nospeedlimit option");
+#endif
+  
     int width = EM_ASM_INT({ return Module.canvas.width; });
     int height = EM_ASM_INT({ return Module.canvas.height; });
 
@@ -1297,7 +1433,7 @@ int EMSCRIPTEN_KEEPALIVE start(int argc, char *argv[]) {
       }, l_ROMFilepath);
 
     initIDBFS();
-    copyInputAutoConfig();
+    //    copyInputAutoConfig();
     writeROM(l_ROMFilepath);
     startEmulator(0);
     
@@ -1378,19 +1514,42 @@ int EMSCRIPTEN_KEEPALIVE startEmulator(int argc)
 #endif // EMSCRIPTEN
   
     /* load ROM image */
+    /*
     FILE *fPtr = fopen(l_ROMFilepath, "rb");
     if (fPtr == NULL)
     {
+      printf("errno: %s\n", strerror(errno));
         DebugMessage(M64MSG_ERROR, "couldn't open ROM file '%s' for reading.", l_ROMFilepath);
         (*CoreShutdown)();
         DetachCoreLib();
         return 7;
     }
+    */
+
+    long romLength = EM_ASM_INT({ return new Uint8Array(Module.romData).length; });
+    unsigned char *ROM_buffer = (unsigned char*) EM_ASM_INT({
+
+        const romDataUint8Array = Module.romData;
+
+        console.log("romDataUint8Array: %o", romDataUint8Array);
+        
+        const romBufferPtr = _malloc(romDataUint8Array.length);
+
+        console.log("romBuffer: %d,%d,%d", romDataUint8Array[0],romDataUint8Array[1], romDataUint8Array[2]);
+        for (let i = 0; i < romDataUint8Array.length; i++) {
+          Module.setValue(romBufferPtr + i, romDataUint8Array[i], 'i8');
+        }
+
+        return romBufferPtr;
+      });
+
+    printf("rom_buffer: %u,%u,%u\n", ROM_buffer[0], ROM_buffer[1], ROM_buffer[2]);
+
 
     /* get the length of the ROM, allocate memory buffer, load it from disk */
-    long romlength = 0;
+    /*    //    long romlength = 0;
     fseek(fPtr, 0L, SEEK_END);
-    romlength = ftell(fPtr);
+    //romlength = ftell(fPtr);
     fseek(fPtr, 0L, SEEK_SET);
     unsigned char *ROM_buffer = (unsigned char *) malloc(romlength);
     if (ROM_buffer == NULL)
@@ -1412,8 +1571,10 @@ int EMSCRIPTEN_KEEPALIVE startEmulator(int argc)
     }
     fclose(fPtr);
 
+    */
+
     /* Try to load the ROM image into the core */
-    if ((*CoreDoCommand)(M64CMD_ROM_OPEN, (int) romlength, ROM_buffer) != M64ERR_SUCCESS)
+    if ((*CoreDoCommand)(M64CMD_ROM_OPEN, (int) romLength, ROM_buffer) != M64ERR_SUCCESS)
     {
         DebugMessage(M64MSG_ERROR, "core failed to open ROM image file '%s'.", l_ROMFilepath);
         free(ROM_buffer);
