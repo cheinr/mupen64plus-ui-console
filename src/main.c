@@ -1088,7 +1088,7 @@ int main(int argc, char *argv[])
           if (netplayEnabled) {
             const netplayPause = Module.cwrap('netplay_request_pause', null, ['number'], { async: true });
 
-            const pauseTargetBufferPtr = Module._malloc(4*4); // 4 32bit numbers
+            const pauseTargetBufferPtr = _malloc(4*4); // 4 32bit numbers
 
             pauseTargets.forEach(function(target, index) {
                 Module.setValue(pauseTargetBufferPtr + (index * 4), target, 'i32');
@@ -1103,7 +1103,7 @@ int main(int argc, char *argv[])
 
                   return netplayPause(pauseTargetBufferPtr)
                     .then(() => {
-                        Module._free(pauseTargetBufferPtr);
+                        _free(pauseTargetBufferPtr);
                       })
                     .then(() => pausePromise);
                 });
@@ -1115,7 +1115,7 @@ int main(int argc, char *argv[])
 
               const actionPromise = netplayPause(pauseTargetBufferPtr)
                 .then(() => {
-                    Module._free(pauseTargetBufferPtr);
+                    _free(pauseTargetBufferPtr);
                   }).then(() => {
                       return pausePromise;
                     }).then((counts) => {
